@@ -1,15 +1,52 @@
 # Opt-Out Desk
 
-A single-file static site for tracking manual data broker opt-out workflows.
+A static Leptos/WASM app for tracking manual data broker opt-out workflows and
+discovering more people-search listings.
 
-Open `index.html` directly in a browser, or host the repository with any static
-host such as GitHub Pages, Cloudflare Pages, Netlify, or Vercel.
+## Development
+
+This app is built with Rust, Leptos, and Trunk.
+
+```sh
+trunk serve
+```
+
+For this machine, if Homebrew Rust is earlier in `PATH`, run Trunk with the
+Rustup compiler explicitly:
+
+```sh
+RUSTC=/usr/local/opt/rustup/bin/rustc trunk serve
+```
+
+Build static files into `dist/`:
+
+```sh
+RUSTC=/usr/local/opt/rustup/bin/rustc trunk build
+```
+
+`dist/` can be hosted by GitHub Pages, Cloudflare Pages, Netlify, Vercel, or any
+other static host.
 
 ## Current Brokers
 
 - FastBackgroundCheck
 - Spokeo
 - Whitepages
+- BeenVerified
+- PeopleFinders
+- TruthFinder
+- Intelius
+- Instant Checkmate
+- US Search
+- Radaris
+- ThatsThem
+- CyberBackgroundChecks
+- SearchPeopleFree
+- TruePeopleSearch
+- FastPeopleSearch
+- FamilyTreeNow
+- Nuwber
+- NumLookup
 
 The site stores profile details and checklist progress only in the browser's
 local storage. It does not submit forms automatically, bypass captchas, or
