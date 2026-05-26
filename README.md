@@ -7,21 +7,46 @@ discovering more people-search listings.
 
 This app is built with Rust, Leptos, and Trunk.
 
+This repository includes `rust-toolchain.toml`, so Rustup will use stable Rust
+and install the `wasm32-unknown-unknown` target automatically.
+
+If your shell finds Homebrew Rust first, `cargo build` can fail with:
+
+```text
+can't find crate for `core`
+the `wasm32-unknown-unknown` target may not be installed
+```
+
+Fix that by putting Rustup before Homebrew Rust in `PATH`:
+
 ```sh
+export PATH="/usr/local/opt/rustup/bin:$PATH"
+rustup target add wasm32-unknown-unknown
+```
+
+Then confirm these point at Rustup, not Homebrew:
+
+```sh
+which cargo
+which rustc
+rustup which rustc
+```
+
+```sh
+cargo build
 trunk serve
 ```
 
-For this machine, if Homebrew Rust is earlier in `PATH`, run Trunk with the
-Rustup compiler explicitly:
+For a one-off build without changing `PATH`, run Cargo through Rustup:
 
 ```sh
-RUSTC=/usr/local/opt/rustup/bin/rustc trunk serve
+PATH="/usr/local/opt/rustup/bin:$PATH" cargo build
 ```
 
 Build static files into `dist/`:
 
 ```sh
-RUSTC=/usr/local/opt/rustup/bin/rustc trunk build
+trunk build
 ```
 
 `dist/` can be hosted by GitHub Pages, Cloudflare Pages, Netlify, Vercel, or any
