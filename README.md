@@ -36,9 +36,16 @@ The repository includes a GitHub Pages workflow. On every push to `main`,
 trunk build --release --public-url /opt-out/
 ```
 
-Then it uploads `dist/` to GitHub Pages. In the GitHub repository settings,
-enable Pages with **Source: GitHub Actions**. After the first successful deploy,
-the site will be available at:
+Then it uploads `dist/` to GitHub Pages.
+
+One-time repository setup is required because the default GitHub Actions token
+cannot create the Pages site for this repo:
+
+1. Open `Settings` -> `Pages`.
+2. Set **Source** to **GitHub Actions**.
+3. Re-run the `Deploy` workflow or push to `main`.
+
+After the first successful deploy, the site will be available at:
 
 ```text
 https://patrickomatic.github.io/opt-out/
