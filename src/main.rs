@@ -1,3 +1,5 @@
+#![deny(clippy::pedantic)]
+
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 use serde::{Deserialize, Serialize};
@@ -549,7 +551,7 @@ fn Hero(state: RwSignal<AppState>) -> impl IntoView {
                 </div>
                 <progress max="100" value=move || {
                     let (done, total) = progress();
-                    if total == 0 { 0 } else { (done * 100 / total) as i32 }
+                    progress_percent(done, total)
                 }></progress>
                 <p class="hint">"Treat removal as recurring maintenance. Recheck every 3 to 6 months because listings can reappear from refreshed data sources."</p>
             </div>
@@ -773,17 +775,19 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                     <div>
                         <h3>"Broker candidates"</h3>
                         <p class="subtle">{move || {
-                            let shown = filtered_sites(category_filter.get(), status_filter.get(), state).len();
+                            let shown = filtered_sites(&category_filter.get(), &status_filter.get(), state).len();
                             format!("{shown} of {} brokers shown", SITES.len())
                         }}</p>
                     </div>
                 </div>
                 <div class="panel-body">
                     <div class="broker-table">
-                        {move || filtered_sites(category_filter.get(), status_filter.get(), state).into_iter().map(|site| {
+                        {move || filtered_sites(&category_filter.get(), &status_filter.get(), state).into_iter().map(|site| {
                             let site_id = site.id.to_string();
                             let discovery_status = move || state.with(|s| {
-                                s.discovery.get(site.id).map(|d| d.status.clone()).unwrap_or_else(|| "unchecked".to_string())
+                                s.discovery
+                                    .get(site.id)
+                                    .map_or_else(|| "unchecked".to_string(), |d| d.status.clone())
                             });
                             view! {
                                 <div class="broker-row">
@@ -841,10 +845,10 @@ fn load_state() -> AppState {
 }
 
 fn save_state(state: &AppState) {
-    if let Some(storage) = window().and_then(|w| w.local_storage().ok().flatten()) {
-        if let Ok(raw) = serde_json::to_string(state) {
-            let _ = storage.set_item(STORAGE_KEY, &raw);
-        }
+    if let Some(storage) = window().and_then(|w| w.local_storage().ok().flatten())
+        && let Ok(raw) = serde_json::to_string(state)
+    {
+        let _ = storage.set_item(STORAGE_KEY, &raw);
     }
 }
 
@@ -897,7 +901,7 @@ fn site_status(state: RwSignal<AppState>, site: &Site) -> (&'static str, &'stati
     let complete = state.with(|s| {
         s.progress
             .get(site.id)
-            .map(|steps| steps.len())
+            .map(BTreeSet::len)
             .unwrap_or_default()
     });
     if complete == site.steps.len() {
@@ -917,7 +921,7 @@ fn total_progress(state: RwSignal<AppState>) -> (usize, usize) {
             .map(|site| {
                 s.progress
                     .get(site.id)
-                    .map(|steps| steps.len())
+                    .map(BTreeSet::len)
                     .unwrap_or_default()
             })
             .sum()
@@ -1038,7 +1042,7 @@ fn discovery_queries(profile: &Profile) -> Vec<(String, String)> {
     queries
 }
 
-fn filtered_sites(category: String, status: String, state: RwSignal<AppState>) -> Vec<Site> {
+fn filtered_sites(category: &str, status: &str, state: RwSignal<AppState>) -> Vec<Site> {
     SITES
         .iter()
         .copied()
@@ -1050,8 +1054,7 @@ fn filtered_sites(category: String, status: String, state: RwSignal<AppState>) -
             let current = state.with(|s| {
                 s.discovery
                     .get(site.id)
-                    .map(|d| d.status.clone())
-                    .unwrap_or_else(|| "unchecked".to_string())
+                    .map_or_else(|| "unchecked".to_string(), |d| d.status.clone())
             });
             current == status
         })
@@ -1102,6 +1105,13 @@ fn empty_placeholder(value: &str, placeholder: &str) -> String {
 
 fn google_search(query: &str) -> String {
     format!("https://www.google.com/search?q={}", encode(query))
+}
+
+fn progress_percent(done: usize, total: usize) -> i32 {
+    done.saturating_mul(100)
+        .checked_div(total)
+        .and_then(|percent| i32::try_from(percent).ok())
+        .unwrap_or_default()
 }
 
 fn encode(value: &str) -> String {

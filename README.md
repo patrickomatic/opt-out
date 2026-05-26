@@ -27,6 +27,23 @@ RUSTC=/usr/local/opt/rustup/bin/rustc trunk build
 `dist/` can be hosted by GitHub Pages, Cloudflare Pages, Netlify, Vercel, or any
 other static host.
 
+## Deployment
+
+The repository includes a GitHub Pages workflow. On every push to `main`,
+`.github/workflows/deploy.yml` builds the app with:
+
+```sh
+trunk build --release --public-url /opt-out/
+```
+
+Then it uploads `dist/` to GitHub Pages. In the GitHub repository settings,
+enable Pages with **Source: GitHub Actions**. After the first successful deploy,
+the site will be available at:
+
+```text
+https://patrickomatic.github.io/opt-out/
+```
+
 ## Current Brokers
 
 - FastBackgroundCheck
