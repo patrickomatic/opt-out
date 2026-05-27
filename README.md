@@ -27,12 +27,15 @@ phone verification. The point is to keep the process organized and less tedious.
 This repository uses Rust, Leptos, and Trunk.
 
 The repo is configured for `wasm32-unknown-unknown` via `rust-toolchain.toml`
-and `./.cargo/config.toml`.
+and `./.cargo/config.toml`, so `cargo build` expects the rustup-managed toolchain
+and target to be available.
 
-If your shell picks up Homebrew Rust first, set Rustup ahead of it:
+If your shell picks up Homebrew Rust first, put `~/.cargo/bin` ahead of
+`/usr/local/bin` so rustup's `cargo` and `rustc` are used:
 
 ```sh
-export PATH="/usr/local/opt/rustup/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+which cargo rustc
 rustup target add wasm32-unknown-unknown
 ```
 
