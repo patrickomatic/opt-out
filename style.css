@@ -430,6 +430,54 @@ textarea {
   border-bottom: 0;
 }
 
+.broker-queue,
+.onboarding-steps {
+  display: grid;
+  gap: 14px;
+}
+
+.broker-card,
+.mini-step {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-warm);
+}
+
+.broker-card-head,
+.discovery-step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.broker-card-head {
+  margin-bottom: 12px;
+}
+
+.broker-card p,
+.mini-step p,
+.discovery-step p {
+  margin: 4px 0 0;
+}
+
+.discovery-step {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.expanded-steps {
+  margin-top: 14px;
+}
+
+.found-action {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .broker-row {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.7fr) minmax(130px, 0.6fr) auto;
@@ -479,7 +527,9 @@ textarea {
 
   .hero,
   .grid,
-  .broker-row {
+  .broker-row,
+  .broker-card-head,
+  .discovery-step {
     grid-template-columns: 1fr;
   }
 

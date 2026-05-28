@@ -37,6 +37,8 @@ impl Default for DiscoveryRecord {
 
 #[derive(Clone, Deserialize, Serialize)]
 struct AppState {
+    #[serde(default)]
+    onboarding_complete: bool,
     active_view: String,
     active_site: String,
     profile: Profile,
@@ -47,7 +49,8 @@ struct AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            active_view: "workflow".to_string(),
+            onboarding_complete: false,
+            active_view: "setup".to_string(),
             active_site: "fastbackgroundcheck".to_string(),
             profile: Profile::default(),
             progress: BTreeMap::new(),
@@ -434,8 +437,10 @@ fn App() -> impl IntoView {
             <main>
                 <Hero state=state />
                 {move || {
-                    let is_discovery = state.with(|s| s.active_view == "discovery");
-                    if is_discovery {
+                    let active_view = state.with(|s| s.active_view.clone());
+                    if active_view == "setup" {
+                        view! { <OnboardingView state=state /> }.into_any()
+                    } else if active_view == "discovery" {
                         view! { <DiscoveryView state=state /> }.into_any()
                     } else {
                         view! { <WorkflowView state=state /> }.into_any()
@@ -466,6 +471,14 @@ fn Sidebar(state: RwSignal<AppState>) -> impl IntoView {
             <div class="sidebar-section">
                 <div class="side-label">"Views"</div>
                 <div class="nav-list">
+                    <button
+                        class="nav-button"
+                        type="button"
+                        aria-current=move || state.with(|s| s.active_view == "setup").to_string()
+                        on:click=move |_| state.update(|s| s.active_view = "setup".to_string())
+                    >
+                        "Setup"
+                    </button>
                     <button
                         class="nav-button"
                         type="button"
@@ -528,16 +541,16 @@ fn Hero(state: RwSignal<AppState>) -> impl IntoView {
     view! {
         <section class="hero">
             <div>
-                <h2>"Remove exposed phone, address, and profile listings without losing track."</h2>
+                <h2>"Check each broker first, then remove only the listings that exist."</h2>
                 <p class="subtle">
-                    "Enter only what helps you build search links and copy request text. The app does not submit forms for you because these sites rely on captchas, email links, and phone verification."
+                    "Start with optional profile details to generate better searches. Each broker stays as one discovery task until you mark that your information was found."
                 </p>
             </div>
             <div class="toolbar" aria-live="polite">
                 <div class="progress-row">
                     <strong>{move || {
                         let (done, total) = progress();
-                        format!("{done} of {total} steps complete")
+                        format!("{done} of {total} active tasks complete")
                     }}</strong>
                     <span class=move || {
                         let (done, total) = progress();
@@ -563,70 +576,166 @@ fn Hero(state: RwSignal<AppState>) -> impl IntoView {
 fn WorkflowView(state: RwSignal<AppState>) -> impl IntoView {
     view! {
         <section class="grid">
-            <BrokerWorkflow state=state />
+            <BrokerQueue state=state />
             <Workspace state=state />
         </section>
     }
 }
 
 #[component]
-fn BrokerWorkflow(state: RwSignal<AppState>) -> impl IntoView {
-    let active_site = move || current_site(state);
+fn OnboardingView(state: RwSignal<AppState>) -> impl IntoView {
+    view! {
+        <section class="grid">
+            <div class="panel">
+                <div class="panel-head">
+                    <div>
+                        <h3>"Set up your search profile"</h3>
+                        <p class="subtle">"Optional details make broker searches and support templates faster. Leave anything blank if you prefer."</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <ProfileForm state=state />
+                    <div class="actions">
+                        <button class="btn" type="button" on:click=move |_| state.update(|s| {
+                            s.onboarding_complete = true;
+                            s.active_view = "workflow".to_string();
+                        })>
+                            "Start broker checks"
+                        </button>
+                        <button class="btn secondary" type="button" on:click=move |_| state.update(|s| {
+                            s.onboarding_complete = true;
+                            s.active_view = "workflow".to_string();
+                        })>
+                            "Skip for now"
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-head">
+                    <div>
+                        <h3>"What happens next"</h3>
+                        <p class="subtle">"The main workflow starts with one task per broker."</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="onboarding-steps">
+                        <div class="mini-step">
+                            <strong>"1. Search"</strong>
+                            <p>"Open the broker search link and check whether your record exists."</p>
+                        </div>
+                        <div class="mini-step">
+                            <strong>"2. Decide"</strong>
+                            <p>"Mark the broker as found or not found. Not-found brokers stay collapsed."</p>
+                        </div>
+                        <div class="mini-step">
+                            <strong>"3. Remove"</strong>
+                            <p>"When a record is found, that broker expands into the removal steps."</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+}
+
+#[component]
+fn BrokerQueue(state: RwSignal<AppState>) -> impl IntoView {
     view! {
         <div class="panel">
             <div class="panel-head">
                 <div>
-                    <h3>{move || active_site().name}</h3>
-                    <p class="subtle">{move || active_site().summary}</p>
+                    <h3>"Broker checks"</h3>
+                    <p class="subtle">"Start with discovery. Removal steps appear only for brokers where your information is found."</p>
                 </div>
-                <span class=move || {
-                    let (_, class_name) = site_status(state, &active_site());
-                    format!("pill {class_name}")
-                }>
-                    {move || site_status(state, &active_site()).0}
-                </span>
             </div>
             <div class="panel-body">
-                <div class="callout">{move || active_site().caution}</div>
-                <ol class="steps">
-                    {move || {
-                        let site = active_site();
-                        site.steps.iter().enumerate().map(|(index, step)| {
-                            let checked = move || state.with(|s| {
-                                s.progress.get(site.id).is_some_and(|steps| steps.contains(&index))
-                            });
-                            view! {
-                                <li class="step">
-                                    <input
-                                        type="checkbox"
-                                        prop:checked=checked
-                                        aria-label=step.title
-                                        on:change=move |event| {
-                                            let is_checked = event_target_checked(&event);
-                                            state.update(|s| {
-                                                let steps = s.progress.entry(site.id.to_string()).or_default();
-                                                if is_checked {
-                                                    steps.insert(index);
-                                                } else {
-                                                    steps.remove(&index);
-                                                }
-                                            });
-                                        }
-                                    />
-                                    <div>
-                                        <strong>{step.title}</strong>
-                                        <p>{step.body}</p>
-                                    </div>
-                                </li>
-                            }
-                        }).collect_view()
-                    }}
-                </ol>
-                <div class="actions">
-                    <a class="btn" href=move || active_site().opt_out_url target="_blank" rel="noopener">"Open opt-out"</a>
-                    <a class="btn secondary" href=move || search_url(&active_site(), &state.get().profile) target="_blank" rel="noopener">"Search listing"</a>
+                <div class="broker-queue">
+                    {move || SITES.iter().map(|site| view! { <BrokerQueueItem state=state site=*site /> }).collect_view()}
                 </div>
             </div>
+        </div>
+    }
+}
+
+#[component]
+fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
+    let discovery_status = move || discovery_status(state, site.id);
+    let found = move || matches!(discovery_status().as_str(), "found" | "recheck");
+    let status_label = move || site_status(state, &site);
+
+    view! {
+        <div class="broker-card">
+            <div class="broker-card-head">
+                <div>
+                    <strong>{site.name}</strong>
+                    <div class="small subtle">{site.domain}</div>
+                    <p class="small subtle">{site.summary}</p>
+                </div>
+                <span class=move || {
+                    let (_, class_name) = status_label();
+                    format!("pill {class_name}")
+                }>
+                    {move || status_label().0}
+                </span>
+            </div>
+            <div class="discovery-step">
+                <div>
+                    <strong>"Check whether they have your info"</strong>
+                    <p>"Search this broker by name, phone, address, or any identifiers you entered during setup."</p>
+                </div>
+                <div class="broker-actions">
+                    <a class="mini-btn" href=move || search_url(&site, &state.get().profile) target="_blank" rel="noopener">"Search"</a>
+                    <button class="mini-btn found-action" type="button" on:click=move |_| set_discovery_status(state, site.id, "found")>"Found"</button>
+                    <button class="mini-btn" type="button" on:click=move |_| set_discovery_status(state, site.id, "not-found")>"Not found"</button>
+                </div>
+            </div>
+            {move || {
+                if found() {
+                    view! {
+                        <div class="expanded-steps">
+                            <div class="callout">{site.caution}</div>
+                            <ol class="steps">
+                                {site.steps.iter().enumerate().map(|(index, step)| {
+                                    let checked = move || state.with(|s| {
+                                        s.progress.get(site.id).is_some_and(|steps| steps.contains(&index))
+                                    });
+                                    view! {
+                                        <li class="step">
+                                            <input
+                                                type="checkbox"
+                                                prop:checked=checked
+                                                aria-label=step.title
+                                                on:change=move |event| {
+                                                    let is_checked = event_target_checked(&event);
+                                                    state.update(|s| {
+                                                        let steps = s.progress.entry(site.id.to_string()).or_default();
+                                                        if is_checked {
+                                                            steps.insert(index);
+                                                        } else {
+                                                            steps.remove(&index);
+                                                        }
+                                                    });
+                                                }
+                                            />
+                                            <div>
+                                                <strong>{step.title}</strong>
+                                                <p>{step.body}</p>
+                                            </div>
+                                        </li>
+                                    }
+                                }).collect_view()}
+                            </ol>
+                            <div class="actions">
+                                <a class="btn" href=site.opt_out_url target="_blank" rel="noopener">"Open opt-out"</a>
+                                <button class="btn secondary" type="button" on:click=move |_| set_discovery_status(state, site.id, "removed")>"Mark removed"</button>
+                            </div>
+                        </div>
+                    }.into_any()
+                } else {
+                    view! {}.into_any()
+                }
+            }}
         </div>
     }
 }
@@ -642,27 +751,7 @@ fn Workspace(state: RwSignal<AppState>) -> impl IntoView {
                 </div>
             </div>
             <div class="panel-body">
-                <form class="form-grid">
-                    <div class="split">
-                        <TextField label="First name" value=move || state.get().profile.first_name on_input=move |value| state.update(|s| s.profile.first_name = value) />
-                        <TextField label="Last name" value=move || state.get().profile.last_name on_input=move |value| state.update(|s| s.profile.last_name = value) />
-                    </div>
-                    <div class="split">
-                        <TextField label="City" value=move || state.get().profile.city on_input=move |value| state.update(|s| s.profile.city = value) />
-                        <TextField label="State" value=move || state.get().profile.state on_input=move |value| state.update(|s| s.profile.state = value) />
-                    </div>
-                    <TextField label="Phone number" value=move || state.get().profile.phone on_input=move |value| state.update(|s| s.profile.phone = value) />
-                    <TextField label="Street address" value=move || state.get().profile.address on_input=move |value| state.update(|s| s.profile.address = value) />
-                    <TextField label="Email for opt-outs" value=move || state.get().profile.email on_input=move |value| state.update(|s| s.profile.email = value) />
-                    <label>
-                        "Listing URL or notes"
-                        <textarea
-                            prop:value=move || state.get().profile.notes
-                            placeholder="Paste profile URLs, confirmation dates, or support notes here."
-                            on:input=move |event| state.update(|s| s.profile.notes = event_target_value(&event))
-                        ></textarea>
-                    </label>
-                </form>
+                <ProfileForm state=state />
                 <div class="actions">
                     <button class="btn secondary" type="button" on:click=move |_| copy_text(&support_template(&state.get().profile))>
                         "Copy support request"
@@ -684,6 +773,33 @@ fn Workspace(state: RwSignal<AppState>) -> impl IntoView {
                 </div>
             </div>
         </div>
+    }
+}
+
+#[component]
+fn ProfileForm(state: RwSignal<AppState>) -> impl IntoView {
+    view! {
+        <form class="form-grid">
+            <div class="split">
+                <TextField label="First name" value=move || state.get().profile.first_name on_input=move |value| state.update(|s| s.profile.first_name = value) />
+                <TextField label="Last name" value=move || state.get().profile.last_name on_input=move |value| state.update(|s| s.profile.last_name = value) />
+            </div>
+            <div class="split">
+                <TextField label="City" value=move || state.get().profile.city on_input=move |value| state.update(|s| s.profile.city = value) />
+                <TextField label="State" value=move || state.get().profile.state on_input=move |value| state.update(|s| s.profile.state = value) />
+            </div>
+            <TextField label="Phone number" value=move || state.get().profile.phone on_input=move |value| state.update(|s| s.profile.phone = value) />
+            <TextField label="Street address" value=move || state.get().profile.address on_input=move |value| state.update(|s| s.profile.address = value) />
+            <TextField label="Email for opt-outs" value=move || state.get().profile.email on_input=move |value| state.update(|s| s.profile.email = value) />
+            <label>
+                "Listing URL or notes"
+                <textarea
+                    prop:value=move || state.get().profile.notes
+                    placeholder="Paste profile URLs, confirmation dates, or support notes here."
+                    on:input=move |event| state.update(|s| s.profile.notes = event_target_value(&event))
+                ></textarea>
+            </label>
+        </form>
     }
 }
 
@@ -888,16 +1004,21 @@ fn copy_text(text: &str) {
     }
 }
 
-fn current_site(state: RwSignal<AppState>) -> Site {
-    let active = state.with(|s| s.active_site.clone());
-    SITES
-        .iter()
-        .copied()
-        .find(|site| site.id == active)
-        .unwrap_or(SITES[0])
-}
-
 fn site_status(state: RwSignal<AppState>, site: &Site) -> (&'static str, &'static str) {
+    let discovery = discovery_status(state, site.id);
+    if discovery == "not-found" {
+        return ("Not found", "done");
+    }
+    if discovery == "removed" {
+        return ("Removed", "done");
+    }
+    if discovery == "recheck" {
+        return ("Recheck", "doing");
+    }
+    if discovery != "found" {
+        return ("Unchecked", "todo");
+    }
+
     let complete = state.with(|s| {
         s.progress
             .get(site.id)
@@ -905,28 +1026,61 @@ fn site_status(state: RwSignal<AppState>, site: &Site) -> (&'static str, &'stati
             .unwrap_or_default()
     });
     if complete == site.steps.len() {
-        ("Done", "done")
+        ("Ready to verify", "done")
     } else if complete > 0 {
-        ("In progress", "doing")
+        ("Removing", "doing")
     } else {
-        ("Not started", "todo")
+        ("Found", "found")
     }
 }
 
 fn total_progress(state: RwSignal<AppState>) -> (usize, usize) {
-    let total = SITES.iter().map(|site| site.steps.len()).sum();
-    let done = state.with(|s| {
-        SITES
-            .iter()
-            .map(|site| {
+    state.with(|s| {
+        SITES.iter().fold((0, 0), |(done, total), site| {
+            let discovery = s
+                .discovery
+                .get(site.id)
+                .map_or("unchecked", |record| record.status.as_str());
+            let discovery_done = usize::from(discovery != "unchecked");
+            let include_removal = matches!(discovery, "found" | "recheck");
+            let removal_total = if include_removal { site.steps.len() } else { 0 };
+            let removal_done = if include_removal {
                 s.progress
                     .get(site.id)
                     .map(BTreeSet::len)
                     .unwrap_or_default()
-            })
-            .sum()
+            } else {
+                0
+            };
+            (
+                done + discovery_done + removal_done,
+                total + 1 + removal_total,
+            )
+        })
+    })
+}
+
+fn discovery_status(state: RwSignal<AppState>, site_id: &str) -> String {
+    state.with(|s| {
+        s.discovery
+            .get(site_id)
+            .map_or_else(|| "unchecked".to_string(), |record| record.status.clone())
+    })
+}
+
+fn set_discovery_status(state: RwSignal<AppState>, site_id: &str, status: &str) {
+    state.update(|s| {
+        s.discovery.insert(
+            site_id.to_string(),
+            DiscoveryRecord {
+                status: status.to_string(),
+                last_checked: js_sys::Date::new_0().to_iso_string().into(),
+            },
+        );
+        if status == "not-found" {
+            s.progress.remove(site_id);
+        }
     });
-    (done, total)
 }
 
 fn search_url(site: &Site, profile: &Profile) -> String {
