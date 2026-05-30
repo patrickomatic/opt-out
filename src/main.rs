@@ -1,32 +1,52 @@
 #![deny(clippy::pedantic)]
 
+//! Client-side Opt-Out Desk application.
+//!
+//! The app is intentionally static and browser-hostable. All user-entered
+//! profile details, broker statuses, and checklist progress live in browser
+//! `localStorage` under [`STORAGE_KEY`].
+
 use leptos::prelude::*;
 use leptos::wasm_bindgen::JsCast;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use web_sys::{HtmlAnchorElement, window};
 
+/// Browser `localStorage` key used for the serialized application state.
 const STORAGE_KEY: &str = "optOutDeskState.v2";
 
+/// Optional personal details used to generate broker searches and templates.
 #[derive(Clone, Default, Deserialize, Serialize)]
 struct Profile {
+    /// Given name used in broker name searches.
     first_name: String,
+    /// Family name used in broker name searches.
     last_name: String,
+    /// City used for location-scoped searches.
     city: String,
+    /// State or region used for location-scoped searches.
     state: String,
+    /// Phone number used for reverse lookup and phone-indexed brokers.
     phone: String,
+    /// Street address used for address-indexed broker discovery.
     address: String,
+    /// Email address the user may provide to broker opt-out forms.
     email: String,
+    /// Free-form local notes, commonly profile URLs and confirmation dates.
     notes: String,
 }
 
+/// Per-broker discovery status and the last time that status was changed.
 #[derive(Clone, Deserialize, Serialize)]
 struct DiscoveryRecord {
+    /// Current broker status, such as `unchecked`, `found`, or `removed`.
     status: String,
+    /// ISO timestamp captured when the status was last updated.
     last_checked: String,
 }
 
 impl Default for DiscoveryRecord {
+    /// Creates an unchecked discovery record with no timestamp.
     fn default() -> Self {
         Self {
             status: "unchecked".to_string(),
@@ -35,18 +55,26 @@ impl Default for DiscoveryRecord {
     }
 }
 
+/// Complete persisted application state.
 #[derive(Clone, Deserialize, Serialize)]
 struct AppState {
+    /// Whether the setup screen has been completed or skipped.
     #[serde(default)]
     onboarding_complete: bool,
+    /// Current top-level view: setup, workflow, or discovery.
     active_view: String,
+    /// Broker id selected in the workflow area.
     active_site: String,
+    /// User profile fields used by local helpers.
     profile: Profile,
+    /// Completed removal checklist step indexes keyed by broker id.
     progress: BTreeMap<String, BTreeSet<usize>>,
+    /// Discovery records keyed by broker id.
     discovery: BTreeMap<String, DiscoveryRecord>,
 }
 
 impl Default for AppState {
+    /// Creates the first-run state shown when no saved state exists.
     fn default() -> Self {
         Self {
             onboarding_complete: false,
@@ -59,36 +87,58 @@ impl Default for AppState {
     }
 }
 
+/// A single human-readable removal step for a broker workflow.
 #[derive(Clone, Copy)]
 struct Step {
+    /// Short step title displayed beside the checkbox.
     title: &'static str,
+    /// Supporting instruction text for the step.
     body: &'static str,
 }
 
+/// Static broker metadata and workflow configuration.
 #[derive(Clone, Copy)]
 struct Site {
+    /// Stable id used as the state-map key.
     id: &'static str,
+    /// Display name shown in navigation and lists.
     name: &'static str,
+    /// Broker domain used for generated site-scoped searches.
     domain: &'static str,
+    /// Grouping label used by the discovery filter.
     category: &'static str,
+    /// Human-readable difficulty label.
     difficulty: &'static str,
+    /// Important form or workflow requirements shown as chips.
     signals: &'static [&'static str],
+    /// Brief broker description.
     summary: &'static str,
+    /// Broker-specific warning shown before removal steps.
     caution: &'static str,
+    /// Current known opt-out or suppression URL.
     opt_out_url: &'static str,
+    /// Strategy for generating the broker search link.
     search_kind: SearchKind,
+    /// Checklist steps shown when a matching listing is found.
     steps: &'static [Step],
 }
 
+/// Search-link generation strategy for a broker.
 #[derive(Clone, Copy)]
 enum SearchKind {
+    /// Append an encoded name/location query to a broker URL prefix.
     Direct(&'static str),
+    /// Generate a Google `site:` search using name and location fields.
     GoogleSite,
+    /// Generate a Google `site:` search using phone when present, otherwise name.
     GooglePhoneOrName,
+    /// Generate a Google `site:` search using name and street address.
     GoogleNameAddress,
+    /// Append an encoded phone number to a broker URL prefix.
     PhonePath(&'static str),
 }
 
+/// Shared fallback workflow for brokers without a custom checklist.
 const GENERIC_STEPS: &[Step] = &[
     Step {
         title: "Search for a matching listing",
@@ -112,6 +162,7 @@ const GENERIC_STEPS: &[Step] = &[
     },
 ];
 
+/// Custom workflow for `FastBackgroundCheck`.
 const FASTBACKGROUND_STEPS: &[Step] = &[
     Step {
         title: "Find your listing",
@@ -135,6 +186,7 @@ const FASTBACKGROUND_STEPS: &[Step] = &[
     },
 ];
 
+/// Custom workflow for Spokeo.
 const SPOKEO_STEPS: &[Step] = &[
     Step {
         title: "Find the exact profile",
@@ -158,6 +210,7 @@ const SPOKEO_STEPS: &[Step] = &[
     },
 ];
 
+/// Custom workflow for Whitepages.
 const WHITEPAGES_STEPS: &[Step] = &[
     Step {
         title: "Search your listing",
@@ -181,6 +234,7 @@ const WHITEPAGES_STEPS: &[Step] = &[
     },
 ];
 
+/// Broker catalog used by the workflow, discovery filters, and link helpers.
 const SITES: &[Site] = &[
     Site {
         id: "fastbackgroundcheck",
@@ -418,11 +472,13 @@ const SITES: &[Site] = &[
     },
 ];
 
+/// Installs panic logging and mounts the Leptos app into the document body.
 fn main() {
     console_error_panic_hook::set_once();
     mount_to_body(App);
 }
 
+/// Root application component that owns persistent state and view routing.
 #[component]
 fn App() -> impl IntoView {
     let state = RwSignal::new(load_state());
@@ -454,6 +510,7 @@ fn App() -> impl IntoView {
     }
 }
 
+/// Left navigation with view switches, broker status pills, and local tools.
 #[component]
 fn Sidebar(state: RwSignal<AppState>) -> impl IntoView {
     view! {
@@ -535,6 +592,7 @@ fn Sidebar(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// Top summary area showing overall task progress.
 #[component]
 fn Hero(state: RwSignal<AppState>) -> impl IntoView {
     let progress = move || total_progress(state);
@@ -572,6 +630,7 @@ fn Hero(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// Two-column workflow page for broker checks and the private workspace.
 #[component]
 fn WorkflowView(state: RwSignal<AppState>) -> impl IntoView {
     view! {
@@ -582,6 +641,7 @@ fn WorkflowView(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// First-run setup view for optional search-profile entry.
 #[component]
 fn OnboardingView(state: RwSignal<AppState>) -> impl IntoView {
     view! {
@@ -639,6 +699,7 @@ fn OnboardingView(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// Panel containing every broker as a discovery-first workflow card.
 #[component]
 fn BrokerQueue(state: RwSignal<AppState>) -> impl IntoView {
     view! {
@@ -658,6 +719,7 @@ fn BrokerQueue(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// Broker workflow card that expands removal steps only after discovery.
 #[component]
 fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
     let discovery_status = move || discovery_status(state, site.id);
@@ -740,6 +802,7 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
     }
 }
 
+/// Private notes and helper links shown beside the broker workflow queue.
 #[component]
 fn Workspace(state: RwSignal<AppState>) -> impl IntoView {
     view! {
@@ -776,6 +839,7 @@ fn Workspace(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// Form for editing locally stored profile and notes fields.
 #[component]
 fn ProfileForm(state: RwSignal<AppState>) -> impl IntoView {
     view! {
@@ -803,6 +867,7 @@ fn ProfileForm(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// Reusable controlled text input bound to a profile field.
 #[component]
 fn TextField(
     label: &'static str,
@@ -820,6 +885,7 @@ fn TextField(
     }
 }
 
+/// Discovery page for broader search queries and filterable broker status.
 #[component]
 fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
     let category_filter = RwSignal::new("all".to_string());
@@ -952,6 +1018,7 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
     }
 }
 
+/// Reads saved state from browser `localStorage`, falling back to defaults.
 fn load_state() -> AppState {
     window()
         .and_then(|w| w.local_storage().ok().flatten())
@@ -960,6 +1027,7 @@ fn load_state() -> AppState {
         .unwrap_or_default()
 }
 
+/// Serializes the current state into browser `localStorage`.
 fn save_state(state: &AppState) {
     if let Some(storage) = window().and_then(|w| w.local_storage().ok().flatten())
         && let Ok(raw) = serde_json::to_string(state)
@@ -968,6 +1036,7 @@ fn save_state(state: &AppState) {
     }
 }
 
+/// Removes saved browser state and reloads the app back to first-run defaults.
 fn clear_state() {
     if let Some(storage) = window().and_then(|w| w.local_storage().ok().flatten()) {
         let _ = storage.remove_item(STORAGE_KEY);
@@ -977,6 +1046,7 @@ fn clear_state() {
     }
 }
 
+/// Downloads the current state as a JSON data URL.
 fn export_state(state: RwSignal<AppState>) {
     let Ok(raw) = serde_json::to_string_pretty(&state.get_untracked()) else {
         return;
@@ -998,12 +1068,14 @@ fn export_state(state: RwSignal<AppState>) {
     anchor.click();
 }
 
+/// Copies helper text to the browser clipboard when clipboard access exists.
 fn copy_text(text: &str) {
     if let Some(clipboard) = window().map(|w| w.navigator().clipboard()) {
         let _ = clipboard.write_text(text);
     }
 }
 
+/// Converts a broker's discovery and checklist state into a label and CSS class.
 fn site_status(state: RwSignal<AppState>, site: &Site) -> (&'static str, &'static str) {
     let discovery = discovery_status(state, site.id);
     if discovery == "not-found" {
@@ -1034,6 +1106,7 @@ fn site_status(state: RwSignal<AppState>, site: &Site) -> (&'static str, &'stati
     }
 }
 
+/// Counts completed tasks and total active tasks across discovery and removal.
 fn total_progress(state: RwSignal<AppState>) -> (usize, usize) {
     state.with(|s| {
         SITES.iter().fold((0, 0), |(done, total), site| {
@@ -1060,6 +1133,7 @@ fn total_progress(state: RwSignal<AppState>) -> (usize, usize) {
     })
 }
 
+/// Returns a broker's saved discovery status or `unchecked` when absent.
 fn discovery_status(state: RwSignal<AppState>, site_id: &str) -> String {
     state.with(|s| {
         s.discovery
@@ -1068,6 +1142,7 @@ fn discovery_status(state: RwSignal<AppState>, site_id: &str) -> String {
     })
 }
 
+/// Updates a broker discovery status and records the update timestamp.
 fn set_discovery_status(state: RwSignal<AppState>, site_id: &str, status: &str) {
     state.update(|s| {
         s.discovery.insert(
@@ -1083,6 +1158,7 @@ fn set_discovery_status(state: RwSignal<AppState>, site_id: &str, status: &str) 
     });
 }
 
+/// Builds the best available broker search URL from site metadata and profile data.
 fn search_url(site: &Site, profile: &Profile) -> String {
     match site.search_kind {
         SearchKind::Direct(prefix) => {
@@ -1132,6 +1208,7 @@ fn search_url(site: &Site, profile: &Profile) -> String {
     }
 }
 
+/// Creates broad search-engine discovery queries from the local profile.
 fn discovery_queries(profile: &Profile) -> Vec<(String, String)> {
     let mut queries = Vec::new();
     let name = full_name(profile);
@@ -1196,6 +1273,7 @@ fn discovery_queries(profile: &Profile) -> Vec<(String, String)> {
     queries
 }
 
+/// Returns broker candidates matching the selected category and status filters.
 fn filtered_sites(category: &str, status: &str, state: RwSignal<AppState>) -> Vec<Site> {
     SITES
         .iter()
@@ -1215,6 +1293,7 @@ fn filtered_sites(category: &str, status: &str, state: RwSignal<AppState>) -> Ve
         .collect()
 }
 
+/// Returns sorted, unique broker categories for the discovery filter.
 fn categories() -> Vec<&'static str> {
     let mut categories = SITES.iter().map(|site| site.category).collect::<Vec<_>>();
     categories.sort_unstable();
@@ -1222,6 +1301,7 @@ fn categories() -> Vec<&'static str> {
     categories
 }
 
+/// Generates a reusable broker support request from profile fields.
 fn support_template(profile: &Profile) -> String {
     format!(
         "Hello,\n\nI am requesting removal or suppression of my personal information from your site. Please remove records matching:\n\nName: {}\nLocation: {}\nPhone: {}\nAddress: {}\nProfile URL(s): {}\n\nI am the subject of this request. Please confirm once the records have been removed or tell me what additional information is required to identify the listing.\n\nThank you.",
@@ -1233,6 +1313,7 @@ fn support_template(profile: &Profile) -> String {
     )
 }
 
+/// Joins first and last name while omitting blank parts.
 fn full_name(profile: &Profile) -> String {
     [profile.first_name.as_str(), profile.last_name.as_str()]
         .into_iter()
@@ -1241,6 +1322,7 @@ fn full_name(profile: &Profile) -> String {
         .join(" ")
 }
 
+/// Joins city and state while omitting blank parts.
 fn location(profile: &Profile) -> String {
     [profile.city.as_str(), profile.state.as_str()]
         .into_iter()
@@ -1249,6 +1331,7 @@ fn location(profile: &Profile) -> String {
         .join(", ")
 }
 
+/// Returns a placeholder when a template field has no user-provided value.
 fn empty_placeholder(value: &str, placeholder: &str) -> String {
     if value.is_empty() {
         placeholder.to_string()
@@ -1257,10 +1340,12 @@ fn empty_placeholder(value: &str, placeholder: &str) -> String {
     }
 }
 
+/// Builds a Google search URL for an arbitrary query.
 fn google_search(query: &str) -> String {
     format!("https://www.google.com/search?q={}", encode(query))
 }
 
+/// Converts completed and total counts into a progress-bar percentage.
 fn progress_percent(done: usize, total: usize) -> i32 {
     done.saturating_mul(100)
         .checked_div(total)
@@ -1268,6 +1353,7 @@ fn progress_percent(done: usize, total: usize) -> i32 {
         .unwrap_or_default()
 }
 
+/// URL-encodes a string for query strings and path fragments.
 fn encode(value: &str) -> String {
     urlencoding::encode(value).into_owned()
 }
