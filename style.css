@@ -444,6 +444,15 @@ textarea {
   background: var(--panel-warm);
 }
 
+.broker-card {
+  scroll-margin-top: 18px;
+}
+
+.selected-broker {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(43, 107, 92, 0.16);
+}
+
 .broker-card-head,
 .discovery-step {
   display: grid;

@@ -7,7 +7,7 @@
 //! `localStorage` under [`STORAGE_KEY`].
 
 use leptos::prelude::*;
-use leptos::wasm_bindgen::JsCast;
+use leptos::wasm_bindgen::{JsCast, closure::Closure};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use web_sys::{HtmlAnchorElement, window};
@@ -565,10 +565,7 @@ fn Sidebar(state: RwSignal<AppState>) -> impl IntoView {
                                 class="site-button"
                                 type="button"
                                 aria-current=move || state.with(|s| s.active_site == site_id).to_string()
-                                on:click=move |_| state.update(|s| {
-                                    s.active_site = site.id.to_string();
-                                    s.active_view = "workflow".to_string();
-                                })
+                                on:click=move |_| select_broker(state, site.id)
                             >
                                 <span>{site.name}</span>
                                 <span class=format!("pill {class_name}")>{label}</span>
@@ -727,7 +724,16 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
     let status_label = move || site_status(state, &site);
 
     view! {
-        <div class="broker-card">
+        <div
+            id=broker_element_id(site.id)
+            class=move || {
+                if state.with(|s| s.active_site == site.id) {
+                    "broker-card selected-broker"
+                } else {
+                    "broker-card"
+                }
+            }
+        >
             <div class="broker-card-head">
                 <div>
                     <strong>{site.name}</strong>
@@ -1003,10 +1009,7 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                                     <div class="broker-actions">
                                         <a class="mini-btn" href=search_url(&site, &state.get().profile) target="_blank" rel="noopener">"Search"</a>
                                         <a class="mini-btn" href=site.opt_out_url target="_blank" rel="noopener">"Opt out"</a>
-                                        <button class="mini-btn" type="button" on:click=move |_| state.update(|s| {
-                                            s.active_site = site.id.to_string();
-                                            s.active_view = "workflow".to_string();
-                                        })>"Workflow"</button>
+                                        <button class="mini-btn" type="button" on:click=move |_| select_broker(state, site.id)>"Workflow"</button>
                                     </div>
                                 </div>
                             }
@@ -1073,6 +1076,41 @@ fn copy_text(text: &str) {
     if let Some(clipboard) = window().map(|w| w.navigator().clipboard()) {
         let _ = clipboard.write_text(text);
     }
+}
+
+/// Selects a broker from another view and scrolls its workflow card into view.
+fn select_broker(state: RwSignal<AppState>, site_id: &str) {
+    state.update(|s| {
+        s.active_site = site_id.to_string();
+        s.active_view = "workflow".to_string();
+    });
+    scroll_to_broker(site_id);
+}
+
+/// Stable DOM id for broker workflow cards.
+fn broker_element_id(site_id: &str) -> String {
+    format!("broker-{site_id}")
+}
+
+/// Scrolls after the reactive view update has had a browser tick to render.
+fn scroll_to_broker(site_id: &str) {
+    let element_id = broker_element_id(site_id);
+    let Some(win) = window() else {
+        return;
+    };
+    let callback = Closure::once(move || {
+        if let Some(element) = window()
+            .and_then(|win| win.document())
+            .and_then(|document| document.get_element_by_id(&element_id))
+        {
+            element.scroll_into_view();
+        }
+    });
+    let _ = win.set_timeout_with_callback_and_timeout_and_arguments_0(
+        callback.as_ref().unchecked_ref(),
+        0,
+    );
+    callback.forget();
 }
 
 /// Converts a broker's discovery and checklist state into a label and CSS class.
