@@ -52,6 +52,7 @@ select {
 
 a {
   color: var(--accent);
+  text-decoration: none;
 }
 
 h1,
