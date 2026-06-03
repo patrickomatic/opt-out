@@ -21,6 +21,7 @@ phone verification. The point is to keep the process organized and less tedious.
 - Local-only storage in browser `localStorage`
 - Export/reset controls
 - Static hosting through GitHub Pages
+- GoatCounter page-view analytics
 
 ## Development
 
@@ -47,6 +48,19 @@ cargo clippy -- -D warnings -D clippy::pedantic
 trunk serve
 trunk build --release --public-url /opt-out/
 ```
+
+## Analytics
+
+The site uses GoatCounter for lightweight page-view analytics. The tracking
+script is in `index.html` and points to:
+
+```html
+https://opt-out-desk.goatcounter.com/count
+```
+
+Create a free GoatCounter site using `opt-out-desk` as the site code. If that
+code is unavailable, update the `data-goatcounter` URL in `index.html` to match
+the code you register.
 
 ## Deployment
 
