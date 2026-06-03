@@ -45,9 +45,13 @@ Useful commands:
 ```sh
 cargo build
 cargo clippy -- -D warnings -D clippy::pedantic
-trunk serve
+trunk serve --public-url /opt-out/
 trunk build --release --public-url /opt-out/
 ```
+
+The app uses Leptos Router with `/opt-out` as its base path, matching the
+GitHub Pages project URL. Open local development builds at
+`http://localhost:8080/opt-out/`.
 
 ## Analytics
 
@@ -70,9 +74,15 @@ GitHub Actions**.
 
 ## File Map
 
-- `src/main.rs`: Leptos client app, static broker catalog, local-storage state,
-  workflow views, discovery helpers, export/reset actions, and search URL
-  generation.
+- `src/main.rs`: Module wiring and app mount point.
+- `src/app.rs`: Leptos components, layout, and route-driven page rendering.
+- `src/catalog.rs`: Static broker catalog and workflow steps.
+- `src/model.rs`: Shared state and catalog data types.
+- `src/search.rs`: Search URL generation, discovery queries, and support
+  template helpers.
+- `src/status.rs`: Broker status, progress, and discovery-state helpers.
+- `src/storage.rs`: Local-storage persistence, export/reset actions, clipboard
+  helpers, and broker-card scrolling.
 - `style.css`: Global CSS variables, layout, responsive rules, forms, panels,
   broker cards, status chips, and action buttons.
 - `index.html`: Trunk entry document that links the CSS and Rust/WASM app.

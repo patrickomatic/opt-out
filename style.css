@@ -182,7 +182,9 @@ aside .subtle {
 }
 
 .site-button[aria-current="true"],
-.nav-button[aria-current="true"] {
+.site-button[aria-current="page"],
+.nav-button[aria-current="true"],
+.nav-button[aria-current="page"] {
   border-color: rgba(255, 255, 255, 0.32);
   background: rgba(255, 255, 255, 0.12);
 }

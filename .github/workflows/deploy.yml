@@ -36,6 +36,9 @@ jobs:
       - name: Build static app
         run: trunk build --release --public-url /opt-out/
 
+      - name: Add SPA route fallback
+        run: cp dist/index.html dist/404.html
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
