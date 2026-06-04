@@ -27,12 +27,22 @@ phone verification. The point is to keep the process organized and less tedious.
 
 This repository uses Rust, Leptos, and Trunk.
 
-The repo is configured for `wasm32-unknown-unknown` via `rust-toolchain.toml`
-so `cargo build` expects the rustup-managed toolchain and target to be
-available.
+The repo is configured for `wasm32-unknown-unknown` via `rust-toolchain.toml`.
+Use the `make` targets for local work because they force the rustup-managed
+toolchain even when Homebrew Rust appears earlier in your shell `PATH`.
+
+Recommended commands:
+
+```sh
+make doctor
+make check
+make serve
+make build
+```
 
 If your shell picks up Homebrew Rust first, put `~/.cargo/bin` ahead of
-`/usr/local/bin` so rustup's `cargo` and `rustc` are used:
+`/usr/local/bin` so rustup's `cargo` and `rustc` are used for direct Cargo
+commands:
 
 ```sh
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -40,7 +50,7 @@ which cargo rustc
 rustup target add wasm32-unknown-unknown
 ```
 
-Useful commands:
+Lower-level commands:
 
 ```sh
 cargo build
@@ -106,6 +116,8 @@ GitHub Actions**.
   assets.
 - `Cargo.toml`: Rust package metadata and client-side dependencies.
 - `Cargo.lock`: Locked dependency graph for reproducible builds.
+- `Makefile`: Rustup-aware local command wrapper for toolchain setup, checks,
+  builds, and development serving.
 - `Trunk.toml`: Trunk build configuration for the static output directory and
   default relative public URL.
 - `rust-toolchain.toml`: Rust toolchain, WASM target, rustfmt, and clippy
