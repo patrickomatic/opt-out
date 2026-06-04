@@ -384,7 +384,8 @@ progress::-moz-progress-bar {
 }
 
 .btn,
-.mini-btn {
+.mini-btn,
+.choice-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -421,6 +422,51 @@ progress::-moz-progress-bar {
   background: #ffffff;
   color: var(--ink);
   font-size: 0.86rem;
+}
+
+.search-action {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.choice-group {
+  display: inline-flex;
+  min-height: 34px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.choice-btn {
+  min-width: 82px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.choice-btn + .choice-btn {
+  border-left: 1px solid var(--line);
+}
+
+.choice-btn:hover,
+.choice-btn:focus-visible {
+  background: var(--panel-warm);
+  color: var(--ink);
+}
+
+.found-choice.selected-choice {
+  background: var(--status-found-bg);
+  color: var(--status-found-ink);
+}
+
+.not-found-choice.selected-choice {
+  background: var(--status-todo-bg);
+  color: var(--status-todo-ink);
 }
 
 label {
@@ -533,11 +579,6 @@ textarea {
   margin-top: 14px;
 }
 
-.found-action {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .broker-row {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.7fr) minmax(130px, 0.6fr) auto;
@@ -614,5 +655,15 @@ textarea {
 
   .btn {
     width: 100%;
+  }
+
+  .broker-actions,
+  .search-action,
+  .choice-group {
+    width: 100%;
+  }
+
+  .choice-btn {
+    flex: 1;
   }
 }

@@ -329,9 +329,37 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                     <p>"Search this broker by name, phone, address, or any identifiers you entered during setup."</p>
                 </div>
                 <div class="broker-actions">
-                    <a class="mini-btn" href=move || search_url(&site, &state.get().profile) target="_blank" rel="noopener">"Search"</a>
-                    <button class="mini-btn found-action" type="button" on:click=move |_| set_discovery_status(state, site.id, "found")>"Found"</button>
-                    <button class="mini-btn" type="button" on:click=move |_| set_discovery_status(state, site.id, "not-found")>"Not found"</button>
+                    <a class="mini-btn search-action" href=move || search_url(&site, &state.get().profile) target="_blank" rel="noopener">"Search broker"</a>
+                    <div class="choice-group" role="group" aria-label="Discovery result">
+                        <button
+                            class=move || {
+                                if discovery_status() == "found" {
+                                    "choice-btn found-choice selected-choice"
+                                } else {
+                                    "choice-btn found-choice"
+                                }
+                            }
+                            type="button"
+                            aria-pressed=move || (discovery_status() == "found").to_string()
+                            on:click=move |_| set_discovery_status(state, site.id, "found")
+                        >
+                            "Found"
+                        </button>
+                        <button
+                            class=move || {
+                                if discovery_status() == "not-found" {
+                                    "choice-btn not-found-choice selected-choice"
+                                } else {
+                                    "choice-btn not-found-choice"
+                                }
+                            }
+                            type="button"
+                            aria-pressed=move || (discovery_status() == "not-found").to_string()
+                            on:click=move |_| set_discovery_status(state, site.id, "not-found")
+                        >
+                            "Not found"
+                        </button>
+                    </div>
                 </div>
             </div>
             {move || {
