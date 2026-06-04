@@ -3,15 +3,101 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Opt-Out Desk</title>
+  <title>Opt-Out Desk | Local data broker opt-out checklist</title>
+  <meta
+    name="description"
+    content="Opt-Out Desk is a private, browser-based checklist for manually finding and removing your listings from data broker and people-search sites."
+  >
+  <meta name="application-name" content="Opt-Out Desk">
+  <meta name="theme-color" content="#26342f">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://patrickomatic.github.io/opt-out/">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://patrickomatic.github.io/opt-out/">
+  <meta property="og:title" content="Opt-Out Desk">
+  <meta
+    property="og:description"
+    content="A private local checklist for manual data broker and people-search opt-outs."
+  >
+  <meta property="og:site_name" content="Opt-Out Desk">
+  <meta property="og:image" content="https://patrickomatic.github.io/opt-out/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Opt-Out Desk">
+  <meta
+    name="twitter:description"
+    content="A private local checklist for manual data broker and people-search opt-outs."
+  >
+  <meta name="twitter:image" content="https://patrickomatic.github.io/opt-out/og-image.png">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Opt-Out Desk",
+      "applicationCategory": "PrivacyApplication",
+      "operatingSystem": "Web",
+      "url": "https://patrickomatic.github.io/opt-out/",
+      "description": "A private browser-based checklist for manually finding and removing personal information from data broker and people-search sites.",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Track manual opt-out workflows for data broker sites",
+        "Generate discovery searches for names, phone numbers, and addresses",
+        "Store progress locally in browser localStorage",
+        "Export progress as JSON"
+      ]
+    }
+  </script>
   <script
     data-goatcounter="https://opt-out-desk.goatcounter.com/count"
     async
     src="https://gc.zgo.at/count.js"
   ></script>
+  <link data-trunk rel="copy-file" href="robots.txt">
+  <link data-trunk rel="copy-file" href="sitemap.xml">
+  <link data-trunk rel="copy-file" href="site.webmanifest">
+  <link data-trunk rel="copy-file" href="favicon.svg">
+  <link data-trunk rel="copy-file" href="apple-touch-icon.png">
+  <link data-trunk rel="copy-file" href="og-image.png">
   <link data-trunk rel="css" href="style.css">
   <link data-trunk rel="rust" href="Cargo.toml">
 </head>
 <body>
+  <main id="static-intro" class="static-intro">
+    <section>
+      <p class="static-kicker">Privacy workflow tool</p>
+      <h1>Opt-Out Desk</h1>
+      <p>
+        Opt-Out Desk is a browser-based privacy checklist for manually finding
+        and removing your personal information from data broker and
+        people-search sites.
+      </p>
+      <ul>
+        <li>Track manual opt-out steps for common broker removal flows.</li>
+        <li>Generate discovery searches for phone, address, and name variants.</li>
+        <li>Keep profile details and progress local to your browser.</li>
+        <li>Export your progress as JSON and recheck listings later.</li>
+      </ul>
+      <p>
+        The app runs entirely on GitHub Pages and stores data only in browser
+        localStorage under <code>optOutDeskState.v2</code>.
+      </p>
+      <a href="/opt-out/workflow">Open the opt-out workflow</a>
+    </section>
+  </main>
+  <div id="app"></div>
+  <noscript>
+    <style>
+      #app { display: none; }
+    </style>
+  </noscript>
 </body>
 </html>

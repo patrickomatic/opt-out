@@ -36,6 +36,15 @@ jobs:
       - name: Build static app
         run: trunk build --release --public-url /opt-out/
 
+      - name: Verify static SEO files
+        run: |
+          test -f dist/robots.txt
+          test -f dist/sitemap.xml
+          test -f dist/site.webmanifest
+          test -f dist/og-image.png
+          grep -q '<urlset' dist/sitemap.xml
+          ! grep -qi '<html' dist/sitemap.xml
+
       - name: Add SPA route fallback
         run: cp dist/index.html dist/404.html
 

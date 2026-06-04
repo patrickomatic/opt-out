@@ -1,0 +1,24 @@
+{
+  "name": "Opt-Out Desk",
+  "short_name": "Opt-Out Desk",
+  "description": "A private browser-based checklist for manual data broker opt-outs.",
+  "start_url": "/opt-out/",
+  "scope": "/opt-out/",
+  "display": "standalone",
+  "background_color": "#f7f4ef",
+  "theme_color": "#26342f",
+  "icons": [
+    {
+      "src": "/opt-out/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/opt-out/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -66,6 +66,17 @@ Create a free GoatCounter site using `opt-out-desk` as the site code. If that
 code is unavailable, update the `data-goatcounter` URL in `index.html` to match
 the code you register.
 
+## SEO Assets
+
+The root `index.html` includes static metadata, social preview tags, structured
+data, and a crawlable fallback intro before the WASM app mounts.
+
+Regenerate the social preview and touch icon after visual or copy changes with:
+
+```sh
+node scripts/generate_seo_assets.mjs
+```
+
 ## Deployment
 
 Pushes to `main` run CI and publish the site with GitHub Pages Actions.
@@ -84,8 +95,15 @@ GitHub Actions**.
 - `src/storage.rs`: Local-storage persistence, export/reset actions, clipboard
   helpers, and broker-card scrolling.
 - `style.css`: Global CSS variables, layout, responsive rules, forms, panels,
-  broker cards, status chips, and action buttons.
-- `index.html`: Trunk entry document that links the CSS and Rust/WASM app.
+  broker cards, status chips, action buttons, and static fallback intro.
+- `index.html`: Trunk entry document with SEO metadata, static fallback
+  content, asset copying, CSS, and the Rust/WASM app.
+- `robots.txt`, `sitemap.xml`: Static crawl directives for GitHub Pages.
+- `favicon.svg`, `apple-touch-icon.png`, `og-image.png`: Browser and social
+  preview assets.
+- `site.webmanifest`: Static web app metadata.
+- `scripts/generate_seo_assets.mjs`: Deterministic generator for PNG SEO
+  assets.
 - `Cargo.toml`: Rust package metadata and client-side dependencies.
 - `Cargo.lock`: Locked dependency graph for reproducible builds.
 - `Trunk.toml`: Trunk build configuration for the static output directory and

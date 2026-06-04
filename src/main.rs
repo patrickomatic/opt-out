@@ -14,10 +14,26 @@ mod status;
 mod storage;
 
 use app::App;
-use leptos::prelude::*;
+use leptos::mount::mount_to;
+use wasm_bindgen::JsCast;
+use web_sys::HtmlElement;
 
-/// Installs panic logging and mounts the Leptos app into the document body.
+/// Installs panic logging and mounts the Leptos app into the app root.
 fn main() {
     console_error_panic_hook::set_once();
-    mount_to_body(App);
+
+    let Some(document) = web_sys::window().and_then(|window| window.document()) else {
+        return;
+    };
+
+    if let Some(static_intro) = document.get_element_by_id("static-intro") {
+        static_intro.remove();
+    }
+
+    if let Some(app_root) = document
+        .get_element_by_id("app")
+        .and_then(|element| element.dyn_into::<HtmlElement>().ok())
+    {
+        mount_to(app_root, App).forget();
+    }
 }
