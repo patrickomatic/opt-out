@@ -58,6 +58,21 @@ fn install_header_menu_dismissal() {
     listener.forget();
 }
 
+fn confirm_clear_state() {
+    let confirmed = window()
+        .and_then(|win| {
+            win.confirm_with_message(
+                "Are you sure you want to clear all local Opt-Out Desk data? This cannot be undone.",
+            )
+            .ok()
+        })
+        .unwrap_or(false);
+
+    if confirmed {
+        clear_state();
+    }
+}
+
 /// Root application component that owns persistent state and view routing.
 #[component]
 pub(crate) fn App() -> impl IntoView {
@@ -167,7 +182,7 @@ fn Header(state: RwSignal<AppState>) -> impl IntoView {
                         <button class="site-button" type="button" on:click=move |_| export_state(state)>
                             <span>"Export progress"</span><span>"JSON"</span>
                         </button>
-                        <button class="site-button" type="button" on:click=move |_| clear_state()>
+                        <button class="site-button" type="button" on:click=move |_| confirm_clear_state()>
                             <span>"Clear local data"</span><span>"Reset"</span>
                         </button>
                     </div>
