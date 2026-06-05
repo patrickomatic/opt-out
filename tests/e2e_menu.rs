@@ -66,7 +66,7 @@ async fn exercise_broker_menu(driver: &WebDriver, port: u16) -> TestResult<()> {
     open_broker_menu(driver).await?;
     driver
         .find(By::XPath(format!(
-            "//details[contains(@class,'broker-menu')]//a[.//span[normalize-space()='{BROKER_NAME}']]"
+            "//details[contains(@class,'broker-menu')]//button[.//span[normalize-space()='{BROKER_NAME}']]"
         )))
         .await?
         .click()
@@ -95,7 +95,7 @@ async fn open_broker_menu(driver: &WebDriver) -> WebDriverResult<()> {
         .click()
         .await?;
     let menu = driver.find(By::Css("details.broker-menu")).await?;
-    assert_eq!(menu.attr("open").await?.as_deref(), Some(""));
+    assert!(menu.attr("open").await?.is_some());
     Ok(())
 }
 

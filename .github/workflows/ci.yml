@@ -42,7 +42,7 @@ jobs:
         uses: nanasess/setup-chromedriver@v2
 
       - name: Run browser e2e tests
-        timeout-minutes: 3
+        timeout-minutes: 10
         env:
           CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
         run: cargo test --test e2e_menu

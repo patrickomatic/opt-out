@@ -11,7 +11,7 @@ use crate::storage::{
 };
 use leptos::prelude::*;
 use leptos::wasm_bindgen::{JsCast, closure::Closure};
-use leptos_router::components::{A, Route, Router, Routes};
+use leptos_router::components::{Route, Router, Routes};
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::{NavigateOptions, path};
 use urlencoding::encode;
@@ -92,6 +92,10 @@ pub(crate) fn App() -> impl IntoView {
 #[component]
 fn Header(state: RwSignal<AppState>) -> impl IntoView {
     install_header_menu_dismissal();
+    let navigate = use_navigate();
+    let go_setup = navigate.clone();
+    let go_workflow = navigate.clone();
+    let go_discovery = navigate.clone();
 
     view! {
         <header class="app-header">
@@ -103,15 +107,30 @@ fn Header(state: RwSignal<AppState>) -> impl IntoView {
                 </div>
             </div>
             <nav class="top-nav" aria-label="Primary">
-                <A href="/" exact=true {..} class="nav-button">
+                <button
+                    class="nav-button"
+                    type="button"
+                    aria-current=move || state.with(|s| (s.active_view == "setup").to_string())
+                    on:click=move |_| go_setup("/", NavigateOptions::default())
+                >
                     "Setup"
-                </A>
-                <A href="/workflow" {..} class="nav-button">
+                </button>
+                <button
+                    class="nav-button"
+                    type="button"
+                    aria-current=move || state.with(|s| (s.active_view == "workflow").to_string())
+                    on:click=move |_| go_workflow("/workflow", NavigateOptions::default())
+                >
                     "Workflows"
-                </A>
-                <A href="/discovery" {..} class="nav-button">
+                </button>
+                <button
+                    class="nav-button"
+                    type="button"
+                    aria-current=move || state.with(|s| (s.active_view == "discovery").to_string())
+                    on:click=move |_| go_discovery("/discovery", NavigateOptions::default())
+                >
                     "Discovery"
-                </A>
+                </button>
             </nav>
             <div class="header-actions">
                 <details class="broker-menu">
@@ -121,19 +140,23 @@ fn Header(state: RwSignal<AppState>) -> impl IntoView {
                     </summary>
                     <div class="broker-menu-panel">
                     {move || SITES.iter().map(|site| {
-                        let site_id = site.id.to_string();
+                        let active_site_id = site.id.to_string();
+                        let target_path = format!("/workflow/{}", site.id);
+                        let navigate = navigate.clone();
                         let (label, class_name) = site_status(state, site);
                         view! {
-                            <A
-                                href=format!("/workflow/{}", site.id)
-                                {..}
+                            <button
                                 class="site-button"
-                                aria-current=move || state.with(|s| (s.active_site == site_id).to_string())
-                                on:click=move |_| close_header_menus()
+                                type="button"
+                                aria-current=move || state.with(|s| (s.active_site == active_site_id).to_string())
+                                on:click=move |_| {
+                                    close_header_menus();
+                                    navigate(&target_path, NavigateOptions::default());
+                                }
                             >
                                 <span>{site.name}</span>
                                 <span class=format!("pill {class_name}")>{label}</span>
-                            </A>
+                            </button>
                         }
                     }).collect_view()}
                     </div>
@@ -527,6 +550,7 @@ fn TextField(
 fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
     let category_filter = RwSignal::new("all".to_string());
     let status_filter = RwSignal::new("all".to_string());
+    let navigate = use_navigate();
 
     Effect::new(move |_| {
         state.update(|s| s.active_view = "discovery".to_string());
@@ -607,6 +631,8 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                     <div class="broker-table">
                         {move || filtered_sites(&category_filter.get(), &status_filter.get(), state).into_iter().map(|site| {
                             let site_id = site.id.to_string();
+                            let target_path = format!("/workflow/{}", site.id);
+                            let navigate = navigate.clone();
                             let discovery_status = move || state.with(|s| {
                                 s.discovery
                                     .get(site.id)
@@ -644,7 +670,13 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                                     <div class="broker-actions">
                                         <a class="mini-btn" href=search_url(&site, &state.get().profile) target="_blank" rel="noopener">"Search"</a>
                                         <a class="mini-btn" href=site.opt_out_url target="_blank" rel="noopener">"Opt out"</a>
-                                        <A href=format!("/workflow/{}", site.id) {..} class="mini-btn">"Workflow"</A>
+                                        <button
+                                            class="mini-btn"
+                                            type="button"
+                                            on:click=move |_| navigate(&target_path, NavigateOptions::default())
+                                        >
+                                            "Workflow"
+                                        </button>
                                     </div>
                                 </div>
                             }
