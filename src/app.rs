@@ -37,7 +37,7 @@ pub(crate) fn App() -> impl IntoView {
     view! {
         <Router base=ROUTER_BASE>
             <div class="shell">
-                <Sidebar state=state />
+                <Header state=state />
                 <main>
                     <Hero state=state />
                     <Routes fallback=move || view! { <WorkflowView state=state /> }>
@@ -55,11 +55,11 @@ pub(crate) fn App() -> impl IntoView {
     }
 }
 
-/// Left navigation with view switches, broker status pills, and local tools.
+/// Top navigation with view switches, broker status menu, and local tools.
 #[component]
-fn Sidebar(state: RwSignal<AppState>) -> impl IntoView {
+fn Header(state: RwSignal<AppState>) -> impl IntoView {
     view! {
-        <aside>
+        <header class="app-header">
             <div class="brand">
                 <div class="mark" aria-hidden="true">"OD"</div>
                 <div>
@@ -67,38 +67,36 @@ fn Sidebar(state: RwSignal<AppState>) -> impl IntoView {
                     <p class="subtle">"A local checklist for data broker removals."</p>
                 </div>
             </div>
-            <div class="privacy-note">
-                "This page runs entirely in your browser. Profile details are stored only in this browser's local storage unless you clear them."
-            </div>
-            <div class="sidebar-section">
-                <div class="side-label">"Views"</div>
-                <div class="nav-list">
-                    <a
-                        href=route_href("/")
-                        class="nav-button"
-                        aria-current=move || state.with(|s| (s.active_view == "setup").to_string())
-                    >
-                        "Setup"
-                    </a>
-                    <a
-                        href=route_href("/workflow")
-                        class="nav-button"
-                        aria-current=move || state.with(|s| (s.active_view == "workflow").to_string())
-                    >
-                        "Workflows"
-                    </a>
-                    <a
-                        href=route_href("/discovery")
-                        class="nav-button"
-                        aria-current=move || state.with(|s| (s.active_view == "discovery").to_string())
-                    >
-                        "Discovery"
-                    </a>
-                </div>
-            </div>
-            <div class="sidebar-section">
-                <div class="side-label">"Brokers"</div>
-                <div class="site-list">
+            <nav class="top-nav" aria-label="Primary">
+                <a
+                    href=route_href("/")
+                    class="nav-button"
+                    aria-current=move || state.with(|s| (s.active_view == "setup").to_string())
+                >
+                    "Setup"
+                </a>
+                <a
+                    href=route_href("/workflow")
+                    class="nav-button"
+                    aria-current=move || state.with(|s| (s.active_view == "workflow").to_string())
+                >
+                    "Workflows"
+                </a>
+                <a
+                    href=route_href("/discovery")
+                    class="nav-button"
+                    aria-current=move || state.with(|s| (s.active_view == "discovery").to_string())
+                >
+                    "Discovery"
+                </a>
+            </nav>
+            <div class="header-actions">
+                <details class="broker-menu">
+                    <summary class="menu-button">
+                        <span>"Brokers"</span>
+                        <span class="menu-count">{SITES.len()}</span>
+                    </summary>
+                    <div class="broker-menu-panel">
                     {move || SITES.iter().map(|site| {
                         let site_id = site.id.to_string();
                         let (label, class_name) = site_status(state, site);
@@ -113,20 +111,24 @@ fn Sidebar(state: RwSignal<AppState>) -> impl IntoView {
                             </a>
                         }
                     }).collect_view()}
-                </div>
+                    </div>
+                </details>
+                <details class="tools-menu">
+                    <summary class="menu-button">"Tools"</summary>
+                    <div class="tools-menu-panel">
+                        <button class="site-button" type="button" on:click=move |_| export_state(state)>
+                            <span>"Export progress"</span><span>"JSON"</span>
+                        </button>
+                        <button class="site-button" type="button" on:click=move |_| clear_state()>
+                            <span>"Clear local data"</span><span>"Reset"</span>
+                        </button>
+                    </div>
+                </details>
             </div>
-            <div class="sidebar-section">
-                <div class="side-label">"Tools"</div>
-                <div class="site-list">
-                    <button class="site-button" type="button" on:click=move |_| export_state(state)>
-                        <span>"Export progress"</span><span>"JSON"</span>
-                    </button>
-                    <button class="site-button" type="button" on:click=move |_| clear_state()>
-                        <span>"Clear local data"</span><span>"Reset"</span>
-                    </button>
-                </div>
+            <div class="privacy-note">
+                "Local only"
             </div>
-        </aside>
+        </header>
     }
 }
 
