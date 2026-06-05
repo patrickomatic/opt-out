@@ -10,19 +10,52 @@ use crate::storage::{
     scroll_to_broker,
 };
 use leptos::prelude::*;
-use leptos_router::components::{Route, Router, Routes};
+use leptos::wasm_bindgen::{JsCast, closure::Closure};
+use leptos_router::components::{A, Route, Router, Routes};
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::{NavigateOptions, path};
 use urlencoding::encode;
+use web_sys::{Element, window};
 
 const ROUTER_BASE: &str = "/opt-out";
 
-fn route_href(path: &str) -> String {
-    if path == "/" {
-        format!("{ROUTER_BASE}/")
-    } else {
-        format!("{ROUTER_BASE}{path}")
+fn close_header_menus() {
+    if let Some(document) = window().and_then(|win| win.document())
+        && let Ok(menus) = document.query_selector_all(".broker-menu[open], .tools-menu[open]")
+    {
+        for index in 0..menus.length() {
+            if let Some(menu) = menus
+                .item(index)
+                .and_then(|menu| menu.dyn_into::<Element>().ok())
+            {
+                let _ = menu.remove_attribute("open");
+            }
+        }
     }
+}
+
+fn install_header_menu_dismissal() {
+    let Some(document) = window().and_then(|win| win.document()) else {
+        return;
+    };
+    let listener = Closure::<dyn FnMut(web_sys::Event)>::new(move |event: web_sys::Event| {
+        let click_is_in_menu = event
+            .target()
+            .and_then(|target| target.dyn_into::<Element>().ok())
+            .is_some_and(|target| {
+                target
+                    .closest(".broker-menu, .tools-menu")
+                    .ok()
+                    .flatten()
+                    .is_some()
+            });
+
+        if !click_is_in_menu {
+            close_header_menus();
+        }
+    });
+    let _ = document.add_event_listener_with_callback("click", listener.as_ref().unchecked_ref());
+    listener.forget();
 }
 
 /// Root application component that owns persistent state and view routing.
@@ -58,6 +91,8 @@ pub(crate) fn App() -> impl IntoView {
 /// Top navigation with view switches, broker status menu, and local tools.
 #[component]
 fn Header(state: RwSignal<AppState>) -> impl IntoView {
+    install_header_menu_dismissal();
+
     view! {
         <header class="app-header">
             <div class="brand">
@@ -68,27 +103,15 @@ fn Header(state: RwSignal<AppState>) -> impl IntoView {
                 </div>
             </div>
             <nav class="top-nav" aria-label="Primary">
-                <a
-                    href=route_href("/")
-                    class="nav-button"
-                    aria-current=move || state.with(|s| (s.active_view == "setup").to_string())
-                >
+                <A href="/" exact=true {..} class="nav-button">
                     "Setup"
-                </a>
-                <a
-                    href=route_href("/workflow")
-                    class="nav-button"
-                    aria-current=move || state.with(|s| (s.active_view == "workflow").to_string())
-                >
+                </A>
+                <A href="/workflow" {..} class="nav-button">
                     "Workflows"
-                </a>
-                <a
-                    href=route_href("/discovery")
-                    class="nav-button"
-                    aria-current=move || state.with(|s| (s.active_view == "discovery").to_string())
-                >
+                </A>
+                <A href="/discovery" {..} class="nav-button">
                     "Discovery"
-                </a>
+                </A>
             </nav>
             <div class="header-actions">
                 <details class="broker-menu">
@@ -101,14 +124,16 @@ fn Header(state: RwSignal<AppState>) -> impl IntoView {
                         let site_id = site.id.to_string();
                         let (label, class_name) = site_status(state, site);
                         view! {
-                            <a
-                                href=route_href(&format!("/workflow/{}", site.id))
+                            <A
+                                href=format!("/workflow/{}", site.id)
+                                {..}
                                 class="site-button"
                                 aria-current=move || state.with(|s| (s.active_site == site_id).to_string())
+                                on:click=move |_| close_header_menus()
                             >
                                 <span>{site.name}</span>
                                 <span class=format!("pill {class_name}")>{label}</span>
-                            </a>
+                            </A>
                         }
                     }).collect_view()}
                     </div>
@@ -619,7 +644,7 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                                     <div class="broker-actions">
                                         <a class="mini-btn" href=search_url(&site, &state.get().profile) target="_blank" rel="noopener">"Search"</a>
                                         <a class="mini-btn" href=site.opt_out_url target="_blank" rel="noopener">"Opt out"</a>
-                                        <a class="mini-btn" href=route_href(&format!("/workflow/{}", site.id))>"Workflow"</a>
+                                        <A href=format!("/workflow/{}", site.id) {..} class="mini-btn">"Workflow"</A>
                                     </div>
                                 </div>
                             }

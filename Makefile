@@ -8,7 +8,7 @@ TRUNK := $(shell command -v trunk 2>/dev/null)
 export PATH := $(HOME)/.cargo/bin:$(PATH)
 export RUSTC := $(RUSTC)
 
-.PHONY: all assets build check clippy doctor ensure-toolchain fmt serve
+.PHONY: all assets build check clippy doctor e2e ensure-toolchain fmt serve
 
 all: check
 
@@ -46,6 +46,9 @@ build: ensure-toolchain
 
 serve: ensure-toolchain
 	@env -u NO_COLOR RUSTC="$(RUSTC)" $(TRUNK) serve --port 8080 --public-url /opt-out/
+
+e2e: ensure-toolchain
+	@RUSTC="$(RUSTC)" $(CARGO) test --test e2e_menu
 
 assets:
 	@node scripts/generate_seo_assets.mjs

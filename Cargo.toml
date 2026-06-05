@@ -17,9 +17,16 @@ web-sys = { version = "0.3", features = [
   "Clipboard",
   "Document",
   "Element",
+  "Event",
+  "EventTarget",
   "HtmlAnchorElement",
   "Navigator",
+  "NodeList",
   "Storage",
   "Url",
   "Window",
 ] }
+
+[dev-dependencies]
+thirtyfour = { version = "0.37.1", default-features = false, features = ["reqwest", "rustls"] }
+tokio = { version = "1", features = ["macros", "process", "rt-multi-thread", "time"] }

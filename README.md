@@ -36,9 +36,13 @@ Recommended commands:
 ```sh
 make doctor
 make check
+make e2e
 make serve
 make build
 ```
+
+`make e2e` runs a Rust WebDriver smoke test and expects `chromedriver` on
+your `PATH`. CI installs Chrome and ChromeDriver automatically.
 
 If your shell picks up Homebrew Rust first, put `~/.cargo/bin` ahead of
 `/usr/local/bin` so rustup's `cargo` and `rustc` are used for direct Cargo

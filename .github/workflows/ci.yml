@@ -34,6 +34,19 @@ jobs:
       - name: Build static app
         run: trunk build
 
+      - name: Install Chrome
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+
+      - name: Install ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
+      - name: Run browser e2e tests
+        timeout-minutes: 3
+        env:
+          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}
+        run: cargo test --test e2e_menu
+
       - name: Verify static SEO files
         run: |
           test -f dist/robots.txt
