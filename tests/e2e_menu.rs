@@ -80,7 +80,12 @@ async fn exercise_broker_menu(driver: &WebDriver, port: u16) -> TestResult<()> {
     .await?;
 
     open_broker_menu(driver).await?;
-    driver.find(By::Css("main")).await?.click().await?;
+    driver
+        .execute(
+            "document.querySelector('.hero').click();",
+            Vec::<serde_json::Value>::new(),
+        )
+        .await?;
     wait_for_broker_menu_closed(driver).await?;
 
     Ok(())
