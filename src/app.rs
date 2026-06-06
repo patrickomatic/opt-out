@@ -9,7 +9,7 @@ use crate::storage::{
     broker_element_id, clear_state, copy_text, export_state, load_state, save_state,
     scroll_to_broker,
 };
-use js_sys::{Function, Reflect};
+use js_sys::{Array, Function, Reflect};
 use leptos::prelude::*;
 use leptos::wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use leptos_router::components::{Route, Router, Routes};
@@ -105,23 +105,21 @@ fn is_evidence_step(site: &Site, index: usize) -> bool {
         .contains("Save every matching profile URL in notes")
 }
 
-fn upload_evidence_screenshots(state: RwSignal<AppState>, site_id: String, input: HtmlInputElement) {
+fn upload_evidence_screenshots(
+    state: RwSignal<AppState>,
+    site_id: &str,
+    input: &HtmlInputElement,
+) {
     let Some(files) = Reflect::get(input.as_ref(), &JsValue::from_str("files"))
         .ok()
         .filter(|value| !value.is_null() && !value.is_undefined())
     else {
         return;
     };
-    let Some(length) = Reflect::get(files.as_ref(), &JsValue::from_str("length"))
-        .ok()
-        .and_then(|value| value.as_f64())
-        .map(|value| value as u32)
-    else {
-        return;
-    };
+    let files = Array::from(files.as_ref());
 
-    for index in 0..length {
-        let Some(file) = Reflect::get(files.as_ref(), &JsValue::from_f64(f64::from(index)))
+    for index in 0..files.length() {
+        let Some(file) = Reflect::get(files.as_ref(), &JsValue::from(index))
             .ok()
             .filter(|value| !value.is_null() && !value.is_undefined())
         else {
@@ -132,8 +130,7 @@ fn upload_evidence_screenshots(state: RwSignal<AppState>, site_id: String, input
         };
 
         let reader_clone = reader.clone();
-        let state = state;
-        let site_id = site_id.clone();
+        let site_id = site_id.to_string();
         let file_name = Reflect::get(file.as_ref(), &JsValue::from_str("name"))
             .ok()
             .and_then(|value| value.as_string())
@@ -156,7 +153,7 @@ fn upload_evidence_screenshots(state: RwSignal<AppState>, site_id: String, input
 
         reader.set_onload(Some(onload.as_ref().unchecked_ref()));
         let Ok(read_fn) = Reflect::get(reader.as_ref(), &JsValue::from_str("readAsDataURL"))
-            .and_then(|value| value.dyn_into::<Function>())
+            .and_then(wasm_bindgen::JsCast::dyn_into::<Function>)
         else {
             continue;
         };
@@ -645,7 +642,7 @@ fn EvidenceEditor(state: RwSignal<AppState>, site_id: &'static str) -> impl Into
                             else {
                                 return;
                             };
-                            upload_evidence_screenshots(state, site_id.to_string(), input);
+                            upload_evidence_screenshots(state, site_id, &input);
                         }
                     />
                     "Add screenshots"
