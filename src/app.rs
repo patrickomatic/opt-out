@@ -1,8 +1,8 @@
 use crate::catalog::SITES;
 use crate::model::{AppState, DiscoveryRecord, Site};
 use crate::search::{
-    categories, discovery_queries, filtered_sites, google_search, ordered_sites,
-    progress_percent, search_url, support_template,
+    categories, discovery_queries, filtered_sites, google_search, ordered_sites, progress_percent,
+    search_url, support_template,
 };
 use crate::status::{discovery_status, set_discovery_status, site_status, total_progress};
 use crate::storage::{
@@ -67,7 +67,9 @@ fn run_with_view_transition(update: impl FnOnce() + 'static) {
         return;
     };
 
-    let Ok(transition_api) = Reflect::get(document.as_ref(), &JsValue::from_str("startViewTransition")) else {
+    let Ok(transition_api) =
+        Reflect::get(document.as_ref(), &JsValue::from_str("startViewTransition"))
+    else {
         update();
         return;
     };
