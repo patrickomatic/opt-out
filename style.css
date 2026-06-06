@@ -640,10 +640,8 @@ textarea {
 }
 
 .discovery-step {
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #ffffff;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 
 .discovery-step .broker-actions {
