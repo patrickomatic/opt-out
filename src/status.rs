@@ -80,6 +80,9 @@ pub(crate) fn set_discovery_status(state: RwSignal<AppState>, site_id: &str, sta
                 last_checked: js_sys::Date::new_0().to_iso_string().into(),
             },
         );
+        if status == "found" {
+            s.progress.entry(site_id.to_string()).or_default().insert(0);
+        }
         if status == "not-found" {
             s.progress.remove(site_id);
         }

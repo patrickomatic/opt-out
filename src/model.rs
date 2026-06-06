@@ -41,6 +41,24 @@ impl Default for DiscoveryRecord {
     }
 }
 
+/// Local-only evidence captured for a broker during discovery/removal.
+#[derive(Clone, Default, Deserialize, Serialize)]
+pub(crate) struct EvidenceRecord {
+    /// Free-form notes such as URLs, dates, and matching details.
+    pub(crate) notes: String,
+    /// Screenshot attachments stored as local data URLs in browser storage.
+    pub(crate) screenshots: Vec<EvidenceScreenshot>,
+}
+
+/// A single locally stored evidence screenshot.
+#[derive(Clone, Default, Deserialize, Serialize)]
+pub(crate) struct EvidenceScreenshot {
+    /// Original filename from the browser file picker.
+    pub(crate) name: String,
+    /// Base64 data URL persisted in browser storage.
+    pub(crate) data_url: String,
+}
+
 /// Complete persisted application state.
 #[derive(Clone, Deserialize, Serialize)]
 pub(crate) struct AppState {
@@ -57,6 +75,9 @@ pub(crate) struct AppState {
     pub(crate) progress: BTreeMap<String, BTreeSet<usize>>,
     /// Discovery records keyed by broker id.
     pub(crate) discovery: BTreeMap<String, DiscoveryRecord>,
+    /// Local evidence keyed by broker id.
+    #[serde(default)]
+    pub(crate) evidence: BTreeMap<String, EvidenceRecord>,
 }
 
 impl Default for AppState {
@@ -69,6 +90,7 @@ impl Default for AppState {
             profile: Profile::default(),
             progress: BTreeMap::new(),
             discovery: BTreeMap::new(),
+            evidence: BTreeMap::new(),
         }
     }
 }

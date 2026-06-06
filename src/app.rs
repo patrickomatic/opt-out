@@ -1,5 +1,5 @@
 use crate::catalog::SITES;
-use crate::model::{AppState, DiscoveryRecord, Site};
+use crate::model::{AppState, EvidenceScreenshot, Site};
 use crate::search::{
     categories, discovery_queries, filtered_sites, google_search, ordered_sites, progress_percent,
     search_url, support_template,
@@ -18,7 +18,7 @@ use leptos_router::{NavigateOptions, path};
 use std::cell::RefCell;
 use std::rc::Rc;
 use urlencoding::encode;
-use web_sys::{Element, window};
+use web_sys::{Element, FileReader, HtmlInputElement, window};
 
 const ROUTER_BASE: &str = "/opt-out";
 
@@ -94,6 +94,78 @@ fn run_with_view_transition(update: impl FnOnce() + 'static) {
     } else if let Some(update) = update.borrow_mut().take() {
         update();
     }
+}
+
+fn is_evidence_step(site: &Site, index: usize) -> bool {
+    matches!(
+        site.steps[index].title,
+        "Save evidence locally" | "Copy the profile URL"
+    ) || site.steps[index]
+        .body
+        .contains("Save every matching profile URL in notes")
+}
+
+fn upload_evidence_screenshots(state: RwSignal<AppState>, site_id: String, input: HtmlInputElement) {
+    let Some(files) = Reflect::get(input.as_ref(), &JsValue::from_str("files"))
+        .ok()
+        .filter(|value| !value.is_null() && !value.is_undefined())
+    else {
+        return;
+    };
+    let Some(length) = Reflect::get(files.as_ref(), &JsValue::from_str("length"))
+        .ok()
+        .and_then(|value| value.as_f64())
+        .map(|value| value as u32)
+    else {
+        return;
+    };
+
+    for index in 0..length {
+        let Some(file) = Reflect::get(files.as_ref(), &JsValue::from_f64(f64::from(index)))
+            .ok()
+            .filter(|value| !value.is_null() && !value.is_undefined())
+        else {
+            continue;
+        };
+        let Ok(reader) = FileReader::new() else {
+            continue;
+        };
+
+        let reader_clone = reader.clone();
+        let state = state;
+        let site_id = site_id.clone();
+        let file_name = Reflect::get(file.as_ref(), &JsValue::from_str("name"))
+            .ok()
+            .and_then(|value| value.as_string())
+            .unwrap_or_else(|| format!("Screenshot {}", index + 1));
+        let onload = Closure::<dyn FnMut(web_sys::ProgressEvent)>::new(move |_| {
+            let Some(data_url) = reader_clone.result().ok().and_then(|value| value.as_string()) else {
+                return;
+            };
+            state.update(|s| {
+                s.evidence
+                    .entry(site_id.clone())
+                    .or_default()
+                    .screenshots
+                    .push(EvidenceScreenshot {
+                        name: file_name.clone(),
+                        data_url,
+                    });
+            });
+        });
+
+        reader.set_onload(Some(onload.as_ref().unchecked_ref()));
+        let Ok(read_fn) = Reflect::get(reader.as_ref(), &JsValue::from_str("readAsDataURL"))
+            .and_then(|value| value.dyn_into::<Function>())
+        else {
+            continue;
+        };
+        if read_fn.call1(reader.as_ref(), file.as_ref()).is_ok() {
+            onload.forget();
+        }
+    }
+
+    input.set_value("");
 }
 
 fn confirm_clear_state() {
@@ -478,6 +550,7 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                                     let checked = move || state.with(|s| {
                                         s.progress.get(site.id).is_some_and(|steps| steps.contains(&index))
                                     });
+                                    let show_evidence = is_evidence_step(&site, index);
                                     view! {
                                         <li class="step">
                                             <input
@@ -499,6 +572,9 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                                             <div>
                                                 <strong>{step.title}</strong>
                                                 <p>{step.body}</p>
+                                                {show_evidence.then(|| view! {
+                                                    <EvidenceEditor state=state site_id=site.id />
+                                                })}
                                             </div>
                                         </li>
                                     }
@@ -518,6 +594,91 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                     view! { <div class="collapsed-steps" aria-hidden="true"></div> }.into_any()
                 }
             }}
+        </div>
+    }
+}
+
+#[component]
+fn EvidenceEditor(state: RwSignal<AppState>, site_id: &'static str) -> impl IntoView {
+    let evidence_notes = move || {
+        state.with(|s| {
+            s.evidence
+                .get(site_id)
+                .map_or_else(String::new, |record| record.notes.clone())
+        })
+    };
+    let screenshots = move || {
+        state.with(|s| {
+            s.evidence
+                .get(site_id)
+                .map_or_else(Vec::new, |record| record.screenshots.clone())
+        })
+    };
+
+    view! {
+        <div class="evidence-editor">
+            <label>
+                "Evidence notes"
+                <textarea
+                    class="evidence-notes"
+                    prop:value=evidence_notes
+                    placeholder="Paste profile URLs, matching details, and the date found."
+                    on:input=move |event| {
+                        let notes = event_target_value(&event);
+                        state.update(|s| {
+                            s.evidence.entry(site_id.to_string()).or_default().notes = notes;
+                        });
+                    }
+                ></textarea>
+            </label>
+            <div class="evidence-upload">
+                <label class="mini-btn upload-btn">
+                    <input
+                        class="file-input"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        on:change=move |event| {
+                            let Some(input) = event
+                                .target()
+                                .and_then(|target| target.dyn_into::<HtmlInputElement>().ok())
+                            else {
+                                return;
+                            };
+                            upload_evidence_screenshots(state, site_id.to_string(), input);
+                        }
+                    />
+                    "Add screenshots"
+                </label>
+                <span class="small subtle">
+                    "Saved only in this browser. Large images may hit local storage limits."
+                </span>
+            </div>
+            <div class="evidence-gallery">
+                {move || screenshots().into_iter().enumerate().map(|(index, shot)| view! {
+                    <figure class="evidence-shot">
+                        <img src=shot.data_url.clone() alt=shot.name.clone() />
+                        <figcaption>
+                            <span class="small">{shot.name.clone()}</span>
+                            <button
+                                class="mini-btn"
+                                type="button"
+                                on:click=move |_| {
+                                    state.update(|s| {
+                                        if let Some(record) = s.evidence.get_mut(site_id)
+                                            && index < record.screenshots.len()
+                                        {
+                                            record.screenshots.remove(index);
+                                        }
+                                    });
+                                }
+                            >
+                                "Remove"
+                            </button>
+                        </figcaption>
+                    </figure>
+                }).collect_view()}
+            </div>
         </div>
     }
 }
@@ -715,12 +876,7 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                                             let status = event_target_value(&event);
                                             run_with_view_transition({
                                                 let site_id = site_id.clone();
-                                                move || state.update(|s| {
-                                                    s.discovery.insert(site_id.clone(), DiscoveryRecord {
-                                                        status,
-                                                        last_checked: js_sys::Date::new_0().to_iso_string().into(),
-                                                    });
-                                                })
+                                                move || set_discovery_status(state, &site_id, &status)
                                             });
                                         }>
                                             <option value="unchecked">"Unchecked"</option>
