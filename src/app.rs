@@ -1,19 +1,22 @@
 use crate::catalog::SITES;
 use crate::model::{AppState, DiscoveryRecord, Site};
 use crate::search::{
-    categories, discovery_queries, filtered_sites, google_search, progress_percent, search_url,
-    support_template,
+    categories, discovery_queries, filtered_sites, google_search, ordered_sites,
+    progress_percent, search_url, support_template,
 };
 use crate::status::{discovery_status, set_discovery_status, site_status, total_progress};
 use crate::storage::{
     broker_element_id, clear_state, copy_text, export_state, load_state, save_state,
     scroll_to_broker,
 };
+use js_sys::{Function, Reflect};
 use leptos::prelude::*;
-use leptos::wasm_bindgen::{JsCast, closure::Closure};
+use leptos::wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use leptos_router::components::{Route, Router, Routes};
 use leptos_router::hooks::{use_navigate, use_params_map};
 use leptos_router::{NavigateOptions, path};
+use std::cell::RefCell;
+use std::rc::Rc;
 use urlencoding::encode;
 use web_sys::{Element, window};
 
@@ -56,6 +59,39 @@ fn install_header_menu_dismissal() {
     });
     let _ = document.add_event_listener_with_callback("click", listener.as_ref().unchecked_ref());
     listener.forget();
+}
+
+fn run_with_view_transition(update: impl FnOnce() + 'static) {
+    let Some(document) = window().and_then(|win| win.document()) else {
+        update();
+        return;
+    };
+
+    let Ok(transition_api) = Reflect::get(document.as_ref(), &JsValue::from_str("startViewTransition")) else {
+        update();
+        return;
+    };
+    let Some(transition_fn) = transition_api.dyn_ref::<Function>() else {
+        update();
+        return;
+    };
+
+    let update = Rc::new(RefCell::new(Some(update)));
+    let callback_update = Rc::clone(&update);
+    let callback = Closure::<dyn FnMut()>::new(move || {
+        if let Some(update) = callback_update.borrow_mut().take() {
+            update();
+        }
+    });
+
+    if transition_fn
+        .call1(document.as_ref(), callback.as_ref().unchecked_ref())
+        .is_ok()
+    {
+        callback.forget();
+    } else if let Some(update) = update.borrow_mut().take() {
+        update();
+    }
 }
 
 fn confirm_clear_state() {
@@ -350,7 +386,7 @@ fn BrokerQueue(state: RwSignal<AppState>) -> impl IntoView {
             </div>
             <div class="panel-body">
                 <div class="broker-queue">
-                    {move || SITES.iter().map(|site| view! { <BrokerQueueItem state=state site=*site /> }).collect_view()}
+                    {move || ordered_sites(state).into_iter().map(|site| view! { <BrokerQueueItem state=state site /> }).collect_view()}
                 </div>
             </div>
         </div>
@@ -374,6 +410,7 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                     "broker-card"
                 }
             }
+            style=format!("view-transition-name: broker-{};", site.id)
         >
             <div class="broker-card-head">
                 <div>
@@ -402,7 +439,9 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                             }
                             type="button"
                             aria-pressed=move || (discovery_status() == "found").to_string()
-                            on:click=move |_| set_discovery_status(state, site.id, "found")
+                            on:click=move |_| {
+                                run_with_view_transition(move || set_discovery_status(state, site.id, "found"));
+                            }
                         >
                             "Found"
                         </button>
@@ -416,7 +455,11 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                             }
                             type="button"
                             aria-pressed=move || (discovery_status() == "not-found").to_string()
-                            on:click=move |_| set_discovery_status(state, site.id, "not-found")
+                            on:click=move |_| {
+                                run_with_view_transition(move || {
+                                    set_discovery_status(state, site.id, "not-found");
+                                });
+                            }
                         >
                             "Not found"
                         </button>
@@ -461,7 +504,11 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                             </ol>
                             <div class="actions">
                                 <a class="btn" href=site.opt_out_url target="_blank" rel="noopener">"Open opt-out"</a>
-                                <button class="btn secondary" type="button" on:click=move |_| set_discovery_status(state, site.id, "removed")>"Mark removed"</button>
+                                <button class="btn secondary" type="button" on:click=move |_| {
+                                    run_with_view_transition(move || {
+                                        set_discovery_status(state, site.id, "removed");
+                                    });
+                                }>"Mark removed"</button>
                             </div>
                         </div>
                     }.into_any()
@@ -650,7 +697,7 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                                     .map_or_else(|| "unchecked".to_string(), |d| d.status.clone())
                             });
                             view! {
-                                <div class="broker-row">
+                                <div class="broker-row" style=format!("view-transition-name: broker-{};", site.id)>
                                     <div>
                                         <strong>{site.name}</strong>
                                         <div class="small subtle">{site.domain}</div>
@@ -664,11 +711,14 @@ fn DiscoveryView(state: RwSignal<AppState>) -> impl IntoView {
                                         "Status"
                                         <select prop:value=discovery_status on:change=move |event| {
                                             let status = event_target_value(&event);
-                                            state.update(|s| {
-                                                s.discovery.insert(site_id.clone(), DiscoveryRecord {
-                                                    status,
-                                                    last_checked: js_sys::Date::new_0().to_iso_string().into(),
-                                                });
+                                            run_with_view_transition({
+                                                let site_id = site_id.clone();
+                                                move || state.update(|s| {
+                                                    s.discovery.insert(site_id.clone(), DiscoveryRecord {
+                                                        status,
+                                                        last_checked: js_sys::Date::new_0().to_iso_string().into(),
+                                                    });
+                                                })
                                             });
                                         }>
                                             <option value="unchecked">"Unchecked"</option>

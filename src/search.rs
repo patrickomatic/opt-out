@@ -3,6 +3,21 @@ use crate::model::{AppState, Profile, SearchKind, Site};
 use leptos::prelude::*;
 use urlencoding::encode as url_encode;
 
+/// Returns brokers ordered with unchecked items first and recently updated items last.
+pub(crate) fn ordered_sites(state: RwSignal<AppState>) -> Vec<Site> {
+    let mut sites = SITES.iter().copied().enumerate().collect::<Vec<_>>();
+    sites.sort_by_key(|(index, site)| {
+        state.with(|s| {
+            let record = s.discovery.get(site.id);
+            let status = record.map_or("unchecked", |entry| entry.status.as_str());
+            let unchecked_rank = usize::from(status != "unchecked");
+            let updated_at = record.map_or("", |entry| entry.last_checked.as_str());
+            (unchecked_rank, updated_at.to_string(), *index)
+        })
+    });
+    sites.into_iter().map(|(_, site)| site).collect()
+}
+
 /// Builds the best available broker search URL from site metadata and profile data.
 pub(crate) fn search_url(site: &Site, profile: &Profile) -> String {
     match site.search_kind {
@@ -120,9 +135,8 @@ pub(crate) fn discovery_queries(profile: &Profile) -> Vec<(String, String)> {
 
 /// Returns broker candidates matching the selected category and status filters.
 pub(crate) fn filtered_sites(category: &str, status: &str, state: RwSignal<AppState>) -> Vec<Site> {
-    SITES
-        .iter()
-        .copied()
+    ordered_sites(state)
+        .into_iter()
         .filter(|site| category == "all" || category == site.category)
         .filter(|site| {
             if status == "all" {

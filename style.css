@@ -599,6 +599,11 @@ textarea {
   border-bottom: 0;
 }
 
+::view-transition-group(*) {
+  animation-duration: 220ms;
+  animation-timing-function: ease;
+}
+
 .broker-queue,
 .onboarding-steps {
   display: grid;
