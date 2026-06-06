@@ -622,8 +622,7 @@ textarea {
   box-shadow: 0 0 0 3px rgba(43, 107, 92, 0.16);
 }
 
-.broker-card-head,
-.discovery-step {
+.broker-card-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
@@ -645,6 +644,15 @@ textarea {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #ffffff;
+}
+
+.discovery-step .broker-actions {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.discovery-step .choice-group {
+  margin-left: auto;
 }
 
 .expanded-steps {
@@ -697,8 +705,7 @@ textarea {
   .hero,
   .grid,
   .broker-row,
-  .broker-card-head,
-  .discovery-step {
+  .broker-card-head {
     grid-template-columns: 1fr;
   }
 
@@ -774,6 +781,10 @@ textarea {
   .search-action,
   .choice-group {
     width: 100%;
+  }
+
+  .discovery-step .choice-group {
+    margin-left: 0;
   }
 
   .choice-btn {
