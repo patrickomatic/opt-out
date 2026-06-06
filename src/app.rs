@@ -389,10 +389,6 @@ fn BrokerQueueItem(state: RwSignal<AppState>, site: Site) -> impl IntoView {
                 </span>
             </div>
             <div class="discovery-step">
-                <div>
-                    <strong>"Check whether they have your info"</strong>
-                    <p>"Search this broker by name, phone, address, or any identifiers you entered during setup."</p>
-                </div>
                 <div class="broker-actions">
                     <a class="mini-btn search-action" href=move || search_url(&site, &state.get().profile) target="_blank" rel="noopener">"Search broker"</a>
                     <div class="choice-group" role="group" aria-label="Discovery result">
