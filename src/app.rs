@@ -105,11 +105,7 @@ fn is_evidence_step(site: &Site, index: usize) -> bool {
         .contains("Save every matching profile URL in notes")
 }
 
-fn upload_evidence_screenshots(
-    state: RwSignal<AppState>,
-    site_id: &str,
-    input: &HtmlInputElement,
-) {
+fn upload_evidence_screenshots(state: RwSignal<AppState>, site_id: &str, input: &HtmlInputElement) {
     let Some(files) = Reflect::get(input.as_ref(), &JsValue::from_str("files"))
         .ok()
         .filter(|value| !value.is_null() && !value.is_undefined())
@@ -136,7 +132,11 @@ fn upload_evidence_screenshots(
             .and_then(|value| value.as_string())
             .unwrap_or_else(|| format!("Screenshot {}", index + 1));
         let onload = Closure::<dyn FnMut(web_sys::ProgressEvent)>::new(move |_| {
-            let Some(data_url) = reader_clone.result().ok().and_then(|value| value.as_string()) else {
+            let Some(data_url) = reader_clone
+                .result()
+                .ok()
+                .and_then(|value| value.as_string())
+            else {
                 return;
             };
             state.update(|s| {
