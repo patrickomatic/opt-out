@@ -3,16 +3,16 @@ use crate::model::{AppState, Profile, SearchKind, Site};
 use leptos::prelude::*;
 use urlencoding::encode as url_encode;
 
-/// Returns brokers ordered with unchecked items first and recently updated items last.
+/// Returns brokers ordered with not-found items at the bottom.
 pub(crate) fn ordered_sites(state: RwSignal<AppState>) -> Vec<Site> {
     let mut sites = SITES.iter().copied().enumerate().collect::<Vec<_>>();
     sites.sort_by_key(|(index, site)| {
         state.with(|s| {
             let record = s.discovery.get(site.id);
             let status = record.map_or("unchecked", |entry| entry.status.as_str());
-            let unchecked_rank = usize::from(status != "unchecked");
+            let bottom_rank = usize::from(status == "not-found");
             let updated_at = record.map_or("", |entry| entry.last_checked.as_str());
-            (unchecked_rank, updated_at.to_string(), *index)
+            (bottom_rank, updated_at.to_string(), *index)
         })
     });
     sites.into_iter().map(|(_, site)| site).collect()
